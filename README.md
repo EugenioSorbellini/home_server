@@ -163,3 +163,241 @@ crontab -l
 
 ### Dataset Encryption
 
+I want all my data to be encrypted, so I decided to create an encrypted dataset below the `tank` pool and the `archive` pool. This means that whenever the server is powered off, the data will be encrypted and inaccessible without the passphrase, the price to pay is that I have to type the passphrase every time I reboot the server and want to restart VMs or containers. This is not a big deal for me since the server is in my home and I have also remote access to it (via VPN).
+
+Encryption is not supported at pool level, it can be enabled in child datasets at creation time. Be aware that encryption cannot be enabled at later stages, the parameter is read-only.
+
+Create the encrypted dataset below the `tank` and `archive` pool:
+
+~~~Shell
+zfs create tank/encrypted -o encryption=on -o keyformat=passphrase
+zfs create archive/encrypted -o encryption=on -o keyformat=passphrase
+~~~
+
+Check the used cipher:
+
+~~~Shell
+zfs get encryption tank/encrypted
+zfs get encryption archive/encrypted
+~~~
+
+The default should be `aes-256-gcm` that is considered secure and also the best cipher you can currently get from ZFS
+
+To unlock/lock the created datasets use the following commands:
+
+~~~Shell
+zfs load-key tank/encrypted
+zfs load-key archive/encrypted
+zfs unload-key tank/encrypted
+zfs unload-key archive/encrypted
+~~~
+
+If you want to use the dataset a mount point shall be specified in the dataset parameters. In this case I want `tank/encrypted` to be mounted in `/data` and `archive/encrypted` to be mounted in `/archive`
+
+~~~Shell
+zfs set mountpoint=/data tank/encrypted
+zfs set mountpoint=/archive archive/encrypted
+~~~
+
+Then to mount/umount use the following commands:
+
+~~~Shell
+zfs mount -l tank/encrypted
+zfs mount -l archive/encrypted
+zfs umount -u /data
+zfs umount -u /archive
+~~~
+
+The above commands also load(`-l`)/unload(`-u`) the encryption key (they ask to type the pool key when executed).
+
+Using the proxmox GUI go to `Datacenter/Storage` and add 2 zfs storage, one with ID `tank-encrypted` pointing to the `tank/encrypted` pool and one with ID `archive-encrypted` pointing to the `archive/encrypted` pool
+enable also the `thin provision` option for both.
+
+### RAID array recovery
+
+It may happen that one of the disks in the RAID array fails, in that case the array will be in a degraded state.
+
+To check the pool status:
+
+~~~shell
+zpool status
+~~~
+
+Put offline the failed disk:
+
+~~~shell
+zpool offline <pool_name> <disk_id>
+~~~
+
+Power off the NAS and attach the new disk, use `sudo fdisk -l` to get all the disk info
+
+Wipe the new disk (e.g. `/dev/sdd`):
+
+~~~shell
+wipefs -a -f /dev/sdd
+~~~
+
+Copy the partition scheme from the working disk (e.g. from `/dev/sdc`) and randomize the disk identifier:
+
+~~~shell
+sgdisk --backup=table /dev/sdc
+sgdisk --load-backup=table /dev/sdd
+sgdisk -G /dev/sdd
+rm -rf table
+~~~
+
+Get the disk id:
+
+~~~shell
+ls -la /dev/disk/by-id/
+~~~
+
+Replace the disk:
+
+~~~shell
+zpool replace <pool_name> <old_disk_id> <new_disk_id> 
+~~~
+
+The rebuilding process can be monitored with `zpool status` command
+
+After the disks are synced it is also possible to force a coherency check:
+
+~~~shell
+zpool scrub <pool_name>
+~~~
+
+#### OS disk recovery
+
+In case the failed disk was part of the OS pool (rpool) the procedure is the same but further steps are needed to ensure the OS bootability from the replaced disk.
+
+
+Check that the boot list covers both boot partitions identifiers:
+
+~~~Shell
+efibootmgr -v
+~~~
+
+You should see 2 entries similar to these ones:
+
+~~~Shell
+BootCurrent: 0001
+Timeout: 1 seconds
+BootOrder: 0001,0002
+Boot0001* UEFI OS ....
+Boot0002* UEFI OS ....
+~~~
+
+If these is not the case, you need to update the boot entries and then check again,
+the following command should fix the issue with an interactive prompt:
+
+~~~Shell
+dpkg-reconfigure grub-efi-amd64
+~~~ 
+
+### Enable Email Alerts
+
+The server should be able to send alerts via mail whenever something bad happens, a SMTP "send-only" server needs to be configured for this purpose.
+
+Most ISP to prevent spam do not allow anymore to send emails via port 25, you can check if port 25 is blocked by your ISP by using this command `telnet <mailserver_address> 25`.
+The alternative is to use port 587 but this is a *client* reserved port, so it only works for users subscribed to a mail server and requires authentication with username and password. The mail server will then forward the message to other mail servers using port 25 (without authentication).
+Example: tom@foo.com send a mail to carl@bar.info
+
+1. Tom send the mail by using the mail submission port (587) so by authenticating to the foo.com SMTP server (e.g. smtp.foo.com) whit his credentials
+2. smtp.foo.com recognize that bar.info is an external domain and forward the mail to the destination SMTP server (e.g. smtp.bar.info) using port 25 (no authentication required, port 25 should be used only for mail exchanges between SMTP servers).
+3. Carl open his mailbox at bar.info (POP3 or IMAP protocol) to read the received mail
+
+The conclusion is that if your port 25 is blocked you cannot setup a standalone SMTP server. You have to leverage on an external mail provider to send mails outside of your domain.
+Fortunately if you have a Google account you can use the Gmail SMTP server for free (limited to 500 mails per day).
+
+What I did was to create a new Gmail account to act only as a mail relay, with
+an app password to be used by the proxmox server. 
+
+The steps below cover the setup of `smtp.gmail.com` as a mail relay, but the procedure is similar for other mail providers.
+
+Change the server hostname to be coherent with your server name by editing `/etc/hostname`.
+Edit also the `/etc/hosts` to be coherent with the specified server name and the server assigned IP address
+
+~~~ini
+<server_ip> <server_name>.<domain> <server_name>
+~~~
+
+Reboot to change settings and then do the following procedure:
+
+Ensure the proxmox default user (e.g. root@pam) has a valid email address set, this can be different from the mail address used for the SMTP relay. You can check this from `Datacenter -> Permissions -> Users` section
+
+Go to `Datacenter -> Notifications -> Notification Targets`
+Add a new SMTP target with the following settings:
+
+- end point name:     gmail
+- server:             smtp.gmail.com
+- encryption          STARTTLS
+- username:           gmail relay address
+- password:           app password of gmail relay
+- from adress:        gmail relay address
+- recipients:         proxmox user (e.g. root@pam)
+- Author:             name you want in the mail title
+
+Modify the default Notification Matcher in `Datacenter -> Notifications -> Matchers` to route all mails to the newly created target,
+you can also set the default `mail-to-root` target to disabled.
+
+### Mail notifications for ZFS pools
+
+The `zed` service can be used to monitor the data pool.
+
+Mails are sent whenever a problem is detected and whenever a scrub process complete and a report is available:
+
+~~~Shell
+apt install zfs-zed
+~~~
+
+Then edit the `/etc/zfs/zed.d/zed.rc` uncommenting/changing the following settings:
+
+~~~ini
+ZED_EMAIL_ADDR="root"
+ZED_EMAIL_PROG="mail"
+ZED_EMAIL_OPTS="-s '@SUBJECT@' @ADDRESS@"
+ZED_LOCKDIR="/var/lock"
+ZED_NOTIFY_INTERVAL_SECS=3600
+ZED_NOTIFY_VERBOSE=1
+ZED_NOTIFY_DATA=1
+ZED_USE_ENCLOSURE_LEDS=1
+ZED_SYSLOG_PRIORITY="daemon.notice"
+ZED_SYSLOG_TAG="zed"
+ZED_SYSLOG_SUBCLASS_EXCLUDE="history_event"
+~~~
+
+#### Fix for zed bug
+
+Unfortunately a bug prevent zed from sending notification if a drive fails when the NAS is off. In that case when the server is started the pool status is correctly set to `DEGRADED` however no mail notifications are sent by zed.
+
+A periodic `cron` job can be scheduled to fix this issue, create a file `zpool-check.sh` in the user directory with the following content:
+
+~~~bash
+#! /bin/bash
+ZPOOL_STATUS=$(/usr/sbin/zpool status -x)
+echo "$ZPOOL_STATUS" | grep -v "all pools are healthy" && mail -r root -s "ZPOOL DEGRADED" root <<< $ZPOOL_STATUS
+~~~
+
+Make the file executable
+~~~bash
+chmod +x zpool-check.sh
+~~~
+
+Add the cron job for the user:
+
+~~~shell
+crontab -e
+~~~
+
+Paste the following line to execute the script every hour:
+
+~~~cron
+0 * * * * ./zpool-check.sh
+~~~
+
+Check that the new cron table is installed:
+
+~~~shell
+crontab -l
+~~
+
