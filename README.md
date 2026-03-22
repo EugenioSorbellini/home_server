@@ -13,36 +13,36 @@
       - [1.4.5.1. OS disk recovery](#1451-os-disk-recovery)
     - [1.4.6. Enable Email Alerts](#146-enable-email-alerts)
     - [1.4.7. Mail notifications for ZFS pools](#147-mail-notifications-for-zfs-pools)
-      - [1.4.7.1. Fix for zed bug](#1471-fix-for-zed-bug)
+      - [1.4.7.1. Fix for ZED Bug](#1471-fix-for-zed-bug)
     - [1.4.8. UPS configuration](#148-ups-configuration)
       - [1.4.8.1. UPS Mail Notifications](#1481-ups-mail-notifications)
 
-This repo contains scripts and configurations to setup an home server based on [Proxmox VE](https://www.proxmox.com/en/)
+This repository contains scripts and configurations to set up a home server based on [Proxmox VE](https://www.proxmox.com/en/)
 and [Proxmox Backup Server](https://www.proxmox.com/en/products/proxmox-backup-server/overview).
 
-The goal is to keep all the services decoupled as much as possible from the hardware, so when something will break
-you are be able to restore all your services without having to bother with settings you may have forgotten.
+The goal is to keep all services decoupled from the hardware as much as possible, so that when a failure occurs,
+you will be able to restore all your services without having to worry about forgotten settings.
 
-In the worst case scenario the restore procedure should be as simple as:
+In the worst-case scenario, the restore procedure should be as simple as:
 
-- Install Proxmox on a new machine
-- Recreate the Backup Server instance
-- Import all your VMs/Containers from local backups or remote backups.
+- Installing Proxmox on a new machine
+- Recreating the Backup Server instance
+- Importing all your VMs/Containers from local or remote backups.
 
-This also applyes to SW issues in your running services (e.g. an update that broke the configuration), but in this case the recovery is juts one click away (restore a VM/Container snapshot).
+This also applies to software issues within your running services (e.g., an update that breaks a configuration), but in that case, recovery is just one click away (restoring a VM/Container snapshot).
 
 The home server provides the following services:
 
-- A cloud storage for files [Nextcloud](https://nextcloud.com/).
-- A photo gallery [Memories](https://apps.nextcloud.com/apps/memories).
-- A password [Passbolt](https://www.passbolt.com/).
+- Cloud storage for files using [Nextcloud](https://nextcloud.com/).
+- A photo gallery using [Memories](https://apps.nextcloud.com/apps/memories).
+- A password manager using [Passbolt](https://www.passbolt.com/).
 - [Pi-hole](https://pi-hole.net/) with [Unbound](https://nlnetlabs.nl/projects/unbound/about/)
-  running locally as reverse DNS, to block adds and protect your DNS queries.
+  running locally as a recursive DNS solver, to block ads and protect your DNS queries.
 - [HomeAssistant](https://www.home-assistant.io/) to manage all your home automations from a single interface.
 
-All the services have both Desktop and Mobile clients.
+All these services have both desktop and mobile clients available.
 
-Backups are performed automatically every night and uploaded (encrypted) on an external cloud service. Reports of backups jobs and periodic HW health checks are sent by mail.
+Backups are performed automatically every night and uploaded (encrypted) to an external cloud service. Reports for backup jobs and periodic hardware health checks are sent via email.
 
 ## 1.1. My Hardware
 
@@ -63,12 +63,12 @@ Backups are performed automatically every night and uploaded (encrypted) on an e
 
 ## 1.2. Monthly Costs
 
-I would expect the HW to last 10 years or at least this was my experience with a previous server (Xeon E3-1240 v3) bought in 2013 and replaced in 2025. This makes the HW cost ~13€/month. The server consumes 45W/h in idle and is on 24/7, the electricity cost is 10€/month (assuming 0.3€/kWh). I use also AWS S3 for offsite backups, which costs 3€/month and a domain name for 1€/month.
+I expect the hardware to last 10 years, as that was my experience with a previous server (Xeon E3-1240 v3) bought in 2013 and replaced in 2025. This makes the amortized hardware cost ~13€/month. The server consumes 45W in idle and runs 24/7, making the electricity cost roughly 10€/month (assuming a rate of 0.30€/kWh). I also use AWS S3 for offsite backups, which costs 3€/month, and a domain name for 1€/month.
 
-So the **total monthly cost is ~27€/month**.
-Considering that 2TB on Google Drive costs 10€/month, this is totally not worth it from a purely economical point of view, this makes sense only if you would anyway build a similar machine for other purposes, like I do, using it also to experiment with new technologies and services, create VMs for development, etc... And of course if you value your privacy and want to keep your data under your control and avoid vendors lock-in.
+So, the **total monthly cost is ~27€/month**.
+Considering that 2TB of Google Drive storage costs 10€/month, building a home server is not strictly worth it from a purely economical point of view. It makes sense mainly if you plan to build a similar machine for other purposes—as I do—such as experimenting with new technologies and services, or creating VMs for development. It is also worthwhile if you value your privacy, want to keep your data under your own control, and wish to avoid vendor lock-in.
 
-Of course you can reduce the costs by using cheaper components, avoiding a UPS, choosing a more power efficient CPU, not using an external cloud for backups, etc... Anyway the HW/SW setup I have built is most likely the bare minimum to have a decent degree of redundancy and reliability, not making you regret the convenience of cloud services when the first disk fails or a SW update breaks your configuration.
+Of course, you can reduce these costs by using cheaper components, omitting a UPS, choosing a more power-efficient CPU, or not using an external cloud for backups. However, the hardware and software setup I have documented here is likely the bare minimum required to achieve a decent degree of redundancy and reliability. This ensures you won't regret skipping the convenience of cloud services when the first disk fails or a software update breaks your configuration.
 
 ## 1.3. Router Setup
 
@@ -80,11 +80,11 @@ While I have a domain name to access my Proxmox services, this is not enough if 
 
 Because I do not want to expose an SSH service directly to the internet, I use a VPN. Fortunately, the ISP router supports configuring a WireGuard endpoint, allowing me to securely connect to my home network at any time and fix whatever is broken.
 
-My ISP router has also another pitfall: it has a shared IPv4 address on which I have a limited number of ports I can use, for instance I cannot use port 80 and 443 to expose web services to the internet. I have also a pool of IPv6 addresses that can be potentially used to expose services to the internet, but unfortunately sometimes the router drops IPv6 connectivity and I have to reboot it to restore it.
+My ISP router has another limitation: it assigns a shared IPv4 address with a restricted number of available ports. For instance, I cannot use ports 80 and 443 to expose web services to the internet. While I do have a pool of IPv6 addresses that could potentially be used to expose services entirely over IPv6, the router unfortunately drops IPv6 connectivity on occasion and requires a reboot to restore it.
 
-I found out that I can use free services such as cloudflare tunnel (cloudflared) or Tailscale to expose my web services to the internet without having to deal with IP addresses. This is a practical solution also if you cannot request a static IP address from your ISP.
+I discovered that I can use free services like Cloudflare Tunnels (`cloudflared`) or Tailscale to expose my web services securely without having to deal with IP addresses or port forwarding. This is a practical solution, particularly if you cannot request a static IP address from your ISP.
 
-This guide covers the setup of a cloudflared tunnel, I choosed this option because Cloudflare is also the registrar of my domain name and I already use it to manage my DNS records.
+This guide covers the setup of a Cloudflare Tunnel. I chose this option because Cloudflare is already the registrar for my domain name, and I use it to manage my DNS records.
 
 ## 1.4. Server Setup
 
@@ -92,24 +92,23 @@ The setup I describe here is based on my hardware configuration, it assumes you 
 
 ### 1.4.1. Smart Plug and Wake on LAN
 
-In the BIOS/UEFI the server is set to power on whenever the power is restored after an outage, I also have a smart plug that can be controlled via Home Assistant or directly by a web interface, so I can power off the server and power it on again when needed. The smart plug is connected to the UPS, so it will not be affected by a power outage. This is a preventive measure if for whatever reason the server is not reachable on the network, I can power cycle it via the smart plug and it will come back online.
+In the BIOS/UEFI, the server is set to power on automatically whenever power is restored after an outage. I also have a smart plug that can be controlled via Home Assistant or directly through its web interface, allowing me to remotely power cycle the server if needed. The smart plug is connected to the UPS, so it will not drop power during a utility outage. This setup is a preventive measure: if the server ever becomes unreachable on the network, I can forcefully power cycle it via the smart plug to bring it back online.
 
-Just for extra safety, I have also configured Wake on LAN (WoL). This allows me to remotely power on the server using a WoL tool if it do not start automatically after a power outage.
+For extra safety, I have also configured Wake on LAN (WoL). This allows me to remotely wake the server using a WoL tool if it fails to start automatically after a power outage.
 
-Ensure WOL is enabled in BIOS settings then on Proxmox list
-all network interfaces:
+First, ensure WoL is enabled in your BIOS settings. Then, in Proxmox, list all available network interfaces:
 
 ```bash
 ip a
 ```
 
-Check if WOL is enabled on the ethernet interface (example):
+Check if WoL is enabled on your primary Ethernet interface (for example, `nic0`):
 
 ```bash
 ethtool nic0
 ```
 
-if not edit `/etc/network/interfaces`
+If it is not enabled, edit `/etc/network/interfaces`:
 
 ```ini
 iface nic0 inet manual
@@ -119,21 +118,21 @@ iface nic0 inet manual
 
 ### 1.4.2. Proxmox Installation
 
-During the installation of Proxmox VE, remember to:
+During the initial installation of Proxmox VE, remember to:
 
-- Enable ZFS RAID 1 for the OS disks (2x 256GB SSDs)
-- Set server name according to your domain name (e.g. pve01.domain.com)
-- Assign a static IP address to the server
+- Enable ZFS RAID 1 for the OS disks (using the 2x 256GB SSDs).
+- Set the server hostname according to your domain name (e.g., `pve01.domain.com`).
+- Assign a static IP address to the server.
 
-At the end of the installation, you should be able to access the Proxmox VE web interface at https://[your_server_ip]:8006.
+Once the installation completes, you should be able to access the Proxmox VE web interface at `https://[your_server_ip]:8006`.
 
-Run the post installation script from [Proxmox Community Scripts](https://community-scripts.org/)
+Next, run the post-installation script from [Proxmox Community Scripts](https://community-scripts.org/):
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
 ```
 
-Set the following options:
+When prompted, set the following options:
 
 - Disable 'pve-enterprise' repository
 - Disable 'ceph enterprise' repository
@@ -146,56 +145,55 @@ Set the following options:
 
 ### 1.4.3. Data and Backup Pools Setup
 
-Check which drives you want to include in the data pool:
+First, check which drives you want to include in the data pool:
 
 ```shell
 fdisk -l
 ```
 
-Get the devices IDs
+Retrieve the proper device IDs:
 
 ```shell
 ls -la /dev/disk/by-id/
 ```
 
-In my case the disks IDs are something like:
+In my case, the disk IDs look something like this:
 
 - nvme-KINGSTON_SNV3S2000G_XXXXXXXXXXXXXX63
 - nvme-KINGSTON_SNV3S2000G_XXXXXXXXXXXXXXD0
 - ata-WDC_WD30PURZ-XXXXXXXXXXXXXXXXXXXXXUF
 - ata-WDC_WD30PURZ-XXXXXXXXXXXXXXXXXXXXXN1
 
-Respectively for the data pool (nvme disks) and the backup pool (mechanical disks)
+These correspond to the data pool (NVMe disks) and the backup pool (mechanical disks), respectively.
 
-Create a mirrored pool named `tank` for the data pool and avoid setting a mount folder (`-m none`):
+Create a mirrored pool named `tank` for the data pool. We avoid setting a default mount folder by passing `-m none`:
 
 ```Shell
 zpool create -O compression=on -m none tank mirror /dev/disk/by-id/nvme-KINGSTON_SNV3S2000G_XXXXXXXXXXXXXX63 /dev/disk/by-id/nvme-KINGSTON_SNV3S2000G_XXXXXXXXXXXXXXD0
 ```
 
-Create a mirrored pool named `archive` for the backup pool and avoid setting a mount folder (`-m none`):
+Create a mirrored pool named `archive` for the backup pool, again passing `-m none`:
 
 ```Shell
 zpool create -O compression=on -m none archive mirror /dev/disk/by-id/ata-WDC_WD30PURZ-XXXXXXXXXXXXXXXXXXXXXUF /dev/disk/by-id/ata-WDC_WD30PURZ-XXXXXXXXXXXXXXXXXXXXXN1
 ```
 
->NOTE
->
->Avoid using names such `/dev/sdc` and `/dev/sdd` in place of disk IDs because these identifier are NOT stable between reboots if new devices are added or removed.
+> [!NOTE]
+> Avoid using standard device names like `/dev/sdc` or `/dev/sdd` in place of disk IDs. These identifiers are NOT stable between reboots and might change if standard devices are added or removed.
 
-Check the pools status:
+Check the status of your pools:
 
 ```Shell
 zpool status
 ```
 
-It should be `ONLINE` for all your pools:
+The status should be `ONLINE` for all your pools:
 
 - tank
 - archive
 - rpool (Proxmox default pool created during installation)
 
-By default the compression algorithm should be lz4 (that is good):
+By default, the compression algorithm should be set to `lz4` (which is ideal):
 
 ```Shell
 zpool get feature@lz4_compress tank
@@ -203,19 +201,19 @@ zpool get feature@lz4_compress archive
 zpool get feature@lz4_compress rpool
 ```
 
-should return `active` for all pools.
+The command should return `active` for all pools.
 
-Since compression is enabled at pool level this setting is inherited by all datasets created below the pools.
+Because compression is enabled at the pool level, this setting is inherited by all datasets created within these pools.
 
-Periodically it is suggested to scrub the pool, the command `zpool scrub <pool_name>` examines all data in the specified pool to verify that it checksums correctly, it also repairs recoverable errors if found. This operation is I/O intensive, I decided to schedule it once a week late at night (every Tuesday at 2 am).
+It is highly recommended to scrub your pools periodically. The command `zpool scrub <pool_name>` examines all data in the specified pool to verify that its checksums are correct, and actively repairs recoverable errors if found. Since scrub operations are I/O intensive, I schedule them to run once a week late at night (every Tuesday at 2:00 AM).
 
-To setup the `cron` job give the following command:
+To set up the `cron` job, run the following command to edit your crontab:
 
 ```shell
 crontab -e
 ```
 
-Add the following lines to the cron table, the `MAILTO=""` line avoids that extra mails are sent by cron, the `zpool scrub` command already report the outcome by mail:
+Add the following lines to the cron table. The `MAILTO=""` option prevents `cron` from sending redundant emails, as the `zpool scrub` command via ZED will already send an email report containing the final outcome:
 
 ```cron
 MAILTO=""
@@ -224,7 +222,7 @@ MAILTO=""
 0 2 * * 2 /sbin/zpool scrub archive
 ```
 
-Save and close and verify that the cron table is updated:
+Save and close the editor, then verify that the cron table was successfully updated:
 
 ```shell
 crontab -l
@@ -232,27 +230,27 @@ crontab -l
 
 ### 1.4.4. Dataset Encryption
 
-I want all my data to be encrypted, so I decided to create an encrypted dataset below the `tank` pool and the `archive` pool. This means that whenever the server is powered off, the data will be encrypted and inaccessible without the passphrase, the price to pay is that I have to type the passphrase every time I reboot the server and want to restart VMs or containers. This is not a big deal for me since the server is in my home and I have also remote access to it (via VPN).
+I want all my data to be encrypted at rest. To achieve this, I created an encrypted dataset inside both the `tank` pool and the `archive` pool. This ensures that whenever the server is powered off, the data remains encrypted and inaccessible without the passphrase. The trade-off is that I must manually type the passphrase every time I reboot the server before the VMs and containers can start. This is acceptable for my use case since the server is physically in my home, and I can always reach it remotely via VPN.
 
-Encryption is not supported at pool level, it can be enabled in child datasets at creation time. Be aware that encryption cannot be enabled at later stages, the parameter is read-only.
+Currently, ZFS does not support native encryption at the entire pool level; it must be enabled on child datasets at the time they are created. Be aware that encryption cannot be enabled retroactively on existing datasets—the parameter is read-only once created.
 
-Create the encrypted dataset below the `tank` and `archive` pool:
+Create the encrypted datasets inside the `tank` and `archive` pools:
 
 ```Shell
 zfs create tank/encrypted -o encryption=on -o keyformat=passphrase
 zfs create archive/encrypted -o encryption=on -o keyformat=passphrase
 ```
 
-Check the used cipher:
+Check which cipher was used for the encryption:
 
 ```Shell
 zfs get encryption tank/encrypted
 zfs get encryption archive/encrypted
 ```
 
-The default should be `aes-256-gcm` that is considered secure and also the best cipher you can currently get from ZFS
+The default cipher should be `aes-256-gcm`, which is highly secure and currently the most performant cipher offered by ZFS.
 
-To unlock/lock the created datasets use the following commands:
+To unlock or lock the created datasets manually, use the following commands:
 
 ```Shell
 zfs load-key tank/encrypted
@@ -261,14 +259,14 @@ zfs unload-key tank/encrypted
 zfs unload-key archive/encrypted
 ```
 
-If you want to use the dataset a mount point shall be specified in the dataset parameters. In this case I want `tank/encrypted` to be mounted in `/data` and `archive/encrypted` to be mounted in `/archive`
+If you want to use these datasets, you need to assign them a mount point. In my case, I want `tank/encrypted` to be mounted at `/data` and `archive/encrypted` to be mounted at `/archive`:
 
 ```Shell
 zfs set mountpoint=/data tank/encrypted
 zfs set mountpoint=/archive archive/encrypted
 ```
 
-Then to mount/umount use the following commands:
+To conveniently mount or unmount these datasets, use the following commands:
 
 ```Shell
 zfs mount -l tank/encrypted
@@ -277,36 +275,35 @@ zfs umount -u /data
 zfs umount -u /archive
 ```
 
-The above commands also load(`-l`)/unload(`-u`) the encryption key (they ask to type the pool key when executed).
+These mount commands pass the `-l` (load key) and `-u` (unload key) flags, respectively, which will prompt you to type the decryption passphrase when executed.
 
-Using the proxmox GUI go to `Datacenter/Storage` and add 2 zfs storage, one with ID `tank-encrypted` pointing to the `tank/encrypted` pool and one with ID `archive-encrypted` pointing to the `archive/encrypted` pool
-enable also the `thin provision` option for both.
+Finally, log in to the Proxmox GUI, navigate to `Datacenter -> Storage`, and add two new ZFS storage units. Give them IDs like `tank-encrypted` (pointing to the `tank/encrypted` dataset) and `archive-encrypted` (pointing to the `archive/encrypted` dataset). Make sure to enable the `Thin provision` option for both.
 
 ### 1.4.5. RAID array recovery
 
-It may happen that one of the disks in the RAID array fails, in that case the array will be in a degraded state.
+It may happen that one of the disks in a RAID array fails. In that case, the pool will enter a `DEGRADED` state.
 
-To check the pool status:
+First, check the pool status to identify the failed disk:
 
 ```shell
 zpool status
 ```
 
-Put offline the failed disk:
+Take the failed disk offline:
 
 ```shell
 zpool offline <pool_name> <disk_id>
 ```
 
-Power off the NAS and attach the new disk, use `sudo fdisk -l` to get all the disk info
+Power off the server, physically remove the failed disk, and attach the replacement disk. Once powered back on, use `sudo fdisk -l` to identify the new disk's assigned device name.
 
-Wipe the new disk (e.g. `/dev/sdd`):
+Wipe the new disk (e.g., assuming the new disk is `/dev/sdd`):
 
 ```shell
 wipefs -a -f /dev/sdd
 ```
 
-Copy the partition scheme from the working disk (e.g. from `/dev/sdc`) and randomize the disk identifier:
+Copy the partition scheme over from the working disk (e.g., from `/dev/sdc`) and randomize the new disk's GUIDs:
 
 ```shell
 sgdisk --backup=table /dev/sdc
@@ -315,21 +312,21 @@ sgdisk -G /dev/sdd
 rm -rf table
 ```
 
-Get the disk id:
+Find the new disk's stable `/dev/disk/by-id/` identifier:
 
 ```shell
 ls -la /dev/disk/by-id/
 ```
 
-Replace the disk:
+Replace the old failed disk with the new disk in the array:
 
 ```shell
 zpool replace <pool_name> <old_disk_id> <new_disk_id> 
 ```
 
-The rebuilding process can be monitored with `zpool status` command
+The rebuilding (resilvering) process will begin immediately. You can monitor its progress using the `zpool status` command.
 
-After the disks are synced it is also possible to force a coherency check:
+After the disks are completely synced, you can optionally force a manual coherency check to ensure everything is healthy:
 
 ```shell
 zpool scrub <pool_name>
@@ -337,15 +334,15 @@ zpool scrub <pool_name>
 
 #### 1.4.5.1. OS disk recovery
 
-In case the failed disk was part of the OS pool (rpool) the procedure is the same but further steps are needed to ensure the OS bootability from the replaced disk.
+If the failed disk was part of the OS pool (`rpool`), the recovery procedure is identical to the one above, but additional steps are required to ensure the system remains bootable from the replacement disk.
 
-Check that the boot list covers both boot partitions identifiers:
+Check that the EFI boot list correctly references both boot partitions:
 
 ```Shell
 efibootmgr -v
 ```
 
-You should see 2 entries similar to these ones:
+You should see two boot entries similar to these:
 
 ```Shell
 BootCurrent: 0001
@@ -355,8 +352,7 @@ Boot0001* UEFI OS ....
 Boot0002* UEFI OS ....
 ```
 
-If these is not the case, you need to update the boot entries and then check again,
-the following command should fix the issue with an interactive prompt:
+If only one entry is listed, you need to update the boot loader entries. The following command should launch an interactive prompt to fix the issue and reinstall GRUB to both disks:
 
 ```Shell
 dpkg-reconfigure grub-efi-amd64
@@ -364,61 +360,61 @@ dpkg-reconfigure grub-efi-amd64
 
 ### 1.4.6. Enable Email Alerts
 
-The server should be able to send alerts via mail whenever something bad happens, a SMTP "send-only" server needs to be configured for this purpose.
+The server needs to be able to send alert emails whenever an error occurs. To facilitate this, a "send-only" SMTP server must be configured.
 
-Most ISP to prevent spam do not allow anymore to send emails via port 25, you can check if port 25 is blocked by your ISP by using this command `telnet <mailserver_address> 25`.
-The alternative is to use port 587 but this is a *client* reserved port, so it only works for users subscribed to a mail server and requires authentication with username and password. The mail server will then forward the message to other mail servers using port 25 (without authentication).
-Example: <tom@foo.com> send a mail to <carl@bar.info>
+To combat spam, most ISPs completely block outbound traffic on port 25. You can verify whether port 25 is blocked by your ISP using the command `telnet <external_mailserver_address> 25`.
+The standard alternative is to use port 587. However, port 587 is a client submission port requiring authenticated credentials (username and password) to an existing mail server. Once authenticated, that mail server will forward your message to external servers over port 25.
+As an example, if `<tom@foo.com>` sends an email to `<carl@bar.info>`:
 
-1. Tom send the mail by using the mail submission port (587) so by authenticating to the foo.com SMTP server (e.g. smtp.foo.com) whit his credentials
-2. smtp.foo.com recognize that bar.info is an external domain and forward the mail to the destination SMTP server (e.g. smtp.bar.info) using port 25 (no authentication required, port 25 should be used only for mail exchanges between SMTP servers).
-3. Carl open his mailbox at bar.info (POP3 or IMAP protocol) to read the received mail
+1. Tom connects to his submission port (587) and authenticates identically to his `foo.com` SMTP server (`smtp.foo.com`) using his credentials.
+2. `smtp.foo.com` recognizes that `bar.info` is an external domain and forwards the email to the target SMTP server (`smtp.bar.info`) over port 25.
+3. Carl subsequently opens his `bar.info` mailbox over POP3 or IMAP to read the message.
 
-The conclusion is that if your port 25 is blocked you cannot setup a standalone SMTP server. You have to leverage on an external mail provider to send mails outside of your domain.
-Fortunately if you have a Google account you can use the Gmail SMTP server for free (limited to 500 mails per day).
+The key takeaway is that if your port 25 is blocked, you cannot host your own standalone outbound SMTP server. Instead, you must use an external mail provider as an SMTP relay to send emails externally.
+Fortunately, if you have a Google account, you can use the Gmail SMTP server for free (with a generous limit of 500 emails per day).
 
-What I did was to create a new Gmail account to act only as a mail relay, with
-an app password to be used by the proxmox server.
+I created a dedicated Gmail account strictly to act as a mail relay and generated a Google "App Password" to be used by the Proxmox server.
 
-The steps below cover the setup of `smtp.gmail.com` as a mail relay, but the procedure is similar for other mail providers.
+The steps below cover the setup process for using `smtp.gmail.com` as a mail relay, though the procedure is very similar for other providers.
 
-Change the server hostname to be coherent with your server name by editing `/etc/hostname`.
-Edit also the `/etc/hosts` to be coherent with the specified server name and the server assigned IP address
+First, ensure your server's hostname matches your fully qualified domain name by editing `/etc/hostname`.
+Also, update `/etc/hosts` to ensure it reflects your server name and its assigned IP address:
 
 ```ini
 <server_ip> <server_name>.<domain> <server_name>
 ```
 
-Reboot to change settings and then do the following procedure:
+Reboot the server to apply these settings, then proceed with the following steps:
 
-Ensure the proxmox default user (e.g. root@pam) has a valid email address set, this can be different from the mail address used for the SMTP relay. You can check this from `Datacenter -> Permissions -> Users` section
+Ensure the default Proxmox user (e.g., `root@pam`) has a valid email address configured. This address can be entirely different from the one used for the SMTP relay. You can check this in the Proxmox GUI under `Datacenter -> Permissions -> Users`.
 
-Go to `Datacenter -> Notifications -> Notification Targets`
-Add a new SMTP target with the following settings:
+Next, navigate to `Datacenter -> Notifications -> Notification Targets`.
+Click to add a new `SMTP Target` and configure it with the following settings:
 
-- end point name:     gmail
-- server:             smtp.gmail.com
-- encryption          STARTTLS
-- username:           gmail relay address
-- password:           app password of gmail relay
-- from adress:        gmail relay address
-- recipients:         proxmox user (e.g. root@pam)
-- Author:             name you want in the mail title
+- **Endpoint Name:**     `gmail`
+- **Server:**            `smtp.gmail.com`
+- **Encryption:**        `STARTTLS`
+- **Username:**          `<your_gmail_relay_address>`
+- **Password:**          `<your_gmail_app_password>`
+- **From Address:**      `<your_gmail_relay_address>`
+- **Recipients:**        `<your_proxmox_user>` (e.g., `root@pam`)
+- **Author:**            The sender name you want displayed in the email subject.
 
-Modify the default Notification Matcher in `Datacenter -> Notifications -> Matchers` to route all mails to the newly created target,
-you can also set the default `mail-to-root` target to disabled.
+Finally, edit the default Notification Matcher under `Datacenter -> Notifications -> Matchers` to route all mail output to your newly created target. You can also safely set the default `mail-to-root` target to disabled.
 
 ### 1.4.7. Mail notifications for ZFS pools
 
-The `zed` service can be used to monitor the data pool.
+The ZFS Event Daemon (`zed`) service can automatically monitor your data pools.
 
-Mails are sent whenever a problem is detected and whenever a scrub process complete and a report is available:
+ZED is responsible for sending out email alerts whenever a hardware problem is detected or whenever a scrub process successfully completes and generates a report.
+
+Install the `zfs-zed` package:
 
 ```Shell
 apt install zfs-zed
 ```
 
-Then edit the `/etc/zfs/zed.d/zed.rc` uncommenting/changing the following settings:
+Then, edit `/etc/zfs/zed.d/zed.rc` by uncommenting and modifying the following configuration lines:
 
 ```ini
 ZED_EMAIL_ADDR="root"
@@ -434,11 +430,11 @@ ZED_SYSLOG_TAG="zed"
 ZED_SYSLOG_SUBCLASS_EXCLUDE="history_event"
 ```
 
-#### 1.4.7.1. Fix for zed bug
+#### 1.4.7.1. Fix for ZED Bug
 
-Unfortunately a bug prevent zed from sending notification if a drive fails when the NAS is off. In that case when the server is started the pool status is correctly set to `DEGRADED` however no mail notifications are sent by zed.
+Unfortunately, a known bug prevents ZED from sending a notification if a drive completely fails while the server is powered off. In this edge case, when the server starts back up, the pool status will correctly display `DEGRADED`, but ZED will fail to trigger any email notifications alerting you of the failure.
 
-A periodic `cron` job can be scheduled to fix this issue, create a file `zpool-check.sh` in the user directory with the following content:
+A simple periodic `cron` script can be scheduled to patch over this issue. Create a file named `zpool-check.sh` in your user directory with the following content:
 
 ```bash
 #! /bin/bash
@@ -446,25 +442,25 @@ ZPOOL_STATUS=$(/usr/sbin/zpool status -x)
 echo "$ZPOOL_STATUS" | grep -v "all pools are healthy" && mail -r root -s "ZPOOL DEGRADED" root <<< $ZPOOL_STATUS
 ```
 
-Make the file executable
+Make the script executable:
 
 ```bash
 chmod +x zpool-check.sh
 ```
 
-Add the cron job for the user:
+Add a background cron job for the root user:
 
 ```shell
 crontab -e
 ```
 
-Paste the following line to execute the script every hour:
+Paste the following line to execute the check script silently every hour:
 
 ```cron
 0 * * * * ./zpool-check.sh
 ```
 
-Check that the new cron table is installed:
+Check that the new cron schedule is active:
 
 ```shell
 crontab -l
@@ -472,17 +468,17 @@ crontab -l
 
 ### 1.4.8. UPS configuration
 
-This configuration is specific for the CyberPower CP1500PFCLCD UPS model, anyway the procedure should be similar for other models or brands supported by NUT (Network UPS Tools).
+This specific configuration is tailored for the CyberPower CP1500PFCLCD UPS model. However, the overall procedure will be very similar for other UPS models or brands supported by Network UPS Tools (NUT).
 
-In my case the UPS is connected via USB and the `nut` server is not exposed to other untrusted clients (localhost only). Below steps are not safe if the UPS is exposed to other untrusted clients.
+In my setup, the UPS is connected directly to the server via USB. The `nut` daemon is restricted exclusively to `localhost` and is not exposed to untrusted clients. Please note that the steps below are not considered secure if you plan to expose the UPS daemon over the network.
 
-Install nut
+First, install the `nut` package:
 
 ```bash
 apt-get install nut
 ```
 
-list USB devices
+List your connected USB devices:
 
 ```bash
 lsusb
@@ -490,7 +486,7 @@ lsusb
 Bus 001 Device 002: ID 0764:0501 Cyber Power System, Inc. CP1500 AVR UPS
 ```
 
-Use `nut-scanner` to find the UPS properties
+Use `nut-scanner` to auto-discover the USB UPS properties:
 
 ```bash
 nut-scanner -U
@@ -509,8 +505,7 @@ nut-scanner -U
         ###NOTMATCHED-YET###bcdDevice = "0001"
 ```
 
-Add the device to `/etc/nut/ups.conf` avoid setting also
-`bus`, `device`, and `busport` properties as they may change between reboots
+Manually declare the device inside `/etc/nut/ups.conf`. Avoid including the `bus`, `device`, or `busport` parameters, as they are inherently dynamic and may randomly change between reboots.
 
 ```ini
 [cyberpower]
@@ -523,13 +518,13 @@ Add the device to `/etc/nut/ups.conf` avoid setting also
         vendor = "CPS"
 ```
 
-Edit `/etc/nut/nut.conf`
+Set the daemon mode to standalone in `/etc/nut/nut.conf`:
 
 ```ini
 MODE=standalone
 ```
 
-Edit `/etc/nut/upsd.users`
+Set up a monitoring user and password in `/etc/nut/upsd.users`:
 
 ```ini
    [monuser]
@@ -539,33 +534,32 @@ Edit `/etc/nut/upsd.users`
        instcmds = ALL
 ```
 
-Edit `/etc/nut/upsmon.conf`
+Configure the local monitor agent in `/etc/nut/upsmon.conf`:
 
 ```ini
 MONITOR cyberpower@localhost 1 monuser <your_password> primary
 ```
 
-Add a rule for nut in `/etc/udev/rules.d/50-ups.rules` take care
-`idVendor` and `idProduct` are matching with the `lsusb` output
+Ensure the daemon possesses the correct hardware permissions by adding a udev rule to `/etc/udev/rules.d/50-ups.rules`. Double-check that `idVendor` and `idProduct` accurately reflect your `lsusb` output:
 
 ```ini
 SUBSYSTEM=="usb", ATTR{idVendor}=="0764", ATTR{idProduct}=="0501", MODE="664", GROUP="nut"
 ```
 
-Reload the rules
+Reload the udev rules to apply the new permissions:
 
 ```bash
 udevadm control --reload
 udevadm trigger
 ```
 
-Check if the driver start without errors
+Start the UPS driver to verify it launches without errors:
 
 ```bash
 upsdrvctl start
 ```
 
-Enable all required nut services and check the status
+Finally, enable and start all required NUT backend services, then check their status to ensure they are running properly:
 
 ```bash
 systemctl enable nut-driver-enumerator.service
@@ -586,7 +580,7 @@ systemctl enable nut-driver.target
 
 #### 1.4.8.1. UPS Mail Notifications
 
-Edit `/etc/nut/upsmon.conf`
+We need to configure NUT to execute a shell script that pushes an email whenever a power event happens. Edit `/etc/nut/upsmon.conf` and append these lines:
 
 ```ini
 NOTIFYCMD "/etc/nut/notify.sh"
@@ -599,7 +593,7 @@ NOTIFYFLAG COMMBAD   SYSLOG+WALL+EXEC
 NOTIFYFLAG SHUTDOWN  SYSLOG+WALL+EXEC
 ```
 
-Create the notification script `/etc/nut/notify.sh`
+Create the notification script at `/etc/nut/notify.sh`:
 
 ```bash
 #!/bin/bash
@@ -618,7 +612,7 @@ MESSAGE="UPS Event: $UPSEVENT\n"
 echo -e "$MESSAGE" | mail -s "$EMAIL_SUBJECT" "$EMAIL_RECIPIENT"
 ```
 
-Assign the correct permission to the script and restart the `nut` service:
+Assign the correct executable permissions to the script, assign ownership to the `nut` user, and restart all `nut` services to apply the configuration changes:
 
 ```bash
 chown :nut /etc/nut/notify.sh
@@ -628,4 +622,3 @@ systemctl restart nut-server.service
 systemctl restart nut-driver.service
 systemctl restart nut-monitor.service
 ```
-
