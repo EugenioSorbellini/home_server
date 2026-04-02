@@ -1,0 +1,39 @@
+http:
+  middlewares:
+    # https://docs.nextcloud.com/server/latest/admin_manual/installation/nginx.html
+    nextcloud-secure-headers:
+      headers:
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+        referrerPolicy: "same-origin"
+    
+    https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    
+    nextcloud-chain:
+      chain:
+        middlewares:
+          - https-redirect
+          - nextcloud-secure-headers
+
+    # From Passbolt guide https://help.passbolt.com/configure/https/ce/docker/auto.html
+    passbolt-secure-headers:
+      headers:
+        FrameDeny: true
+        AccessControlAllowMethods: 'GET,OPTIONS,PUT'
+        AccessControlAllowOriginList:
+          - origin-list-or-null
+        AccessControlMaxAge: 100
+        AddVaryHeader: true
+        BrowserXssFilter: true
+        ContentTypeNosniff: true
+        ForceSTSHeader: true
+        STSIncludeSubdomains: true
+        STSPreload: true
+        ContentSecurityPolicy: default-src 'self' 'unsafe-inline'
+        CustomFrameOptionsValue: SAMEORIGIN
+        ReferrerPolicy: same-origin
+        PermissionsPolicy: vibrate 'self'
+        STSSeconds: 31536000

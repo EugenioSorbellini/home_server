@@ -1,0 +1,48 @@
+services:
+  traefik:
+    image: traefik:3
+    restart: unless-stopped
+    environment:
+      - NEXTCLOUD_DOMAIN=${NEXTCLOUD_DOMAIN}
+      - HOMEASSISTANT_DOMAIN=${HOMEASSISTANT_DOMAIN}
+      - NEXTCLOUD_URL=${NEXTCLOUD_URL}
+      - HOMEASSISTANT_URL=${HOMEASSISTANT_URL}
+      - TRAEFIK_CERTIFICATESRESOLVERS_STAGING_ACME_EMAIL=${ACME_EMAIL}
+      - TRAEFIK_CERTIFICATESRESOLVERS_PRODUCTION_ACME_EMAIL=${ACME_EMAIL}
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_DNS_TOKEN}
+    ports:
+      # These are the ports used access NAS services
+      # - 80:80
+      # - 443:443
+      # This is the default port for Traefik Web UI (do not expose it to the internet!!)
+      - ${TRAEFIK_WEBPORT:-8080}:8080
+    volumes:
+      # This is needed by Traefik to access docker containers informations
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # This file holds the Traefik static configuration
+      - ./config/traefik.yml:/etc/traefik/traefik.yml
+      # This folder contains specific traefik configurations for Headers and TLS
+      - ./config/traefik_conf:/etc/traefik/conf
+      # SSL certificates are stored in this volume
+      - traefik-ssl-certs:/ssl-certs
+    networks:
+      # The traefik network
+      - traefik
+      # All the networks of the services routed by Traefik (one network per service for better isolation)
+      - nextcloud-frontend
+      - passbolt
+      - wetty
+
+volumes:
+  traefik-ssl-certs:
+
+networks:
+  traefik:
+    external: true
+  nextcloud-frontend:
+    external: true
+  passbolt:
+    external: true
+  wetty:
+    external: true

@@ -1,0 +1,20 @@
+http:
+  routers:
+    Nextcloud:
+      entryPoints:
+        - https
+      rule: "Host(`{{ env "NEXTCLOUD_DOMAIN" }}`)"
+      service: nextcloud
+      middlewares:
+        - nextcloud-chain
+      tls:
+        # options: TlsNextcloud
+        certResolver: "letsencrypt"
+    HomeAssistant:
+      entryPoints:
+        - https
+      rule: "Host(`{{ env "HOMEASSISTANT_DOMAIN" }}`)"
+      service: home_assistant
+      tls:
+        options: tls_home_assistant
+        certResolver: "letsencrypt"

@@ -5,18 +5,23 @@
   - [1.2. Monthly Costs](#12-monthly-costs)
   - [1.3. Router Setup](#13-router-setup)
   - [1.4. Server Setup](#14-server-setup)
-    - [1.4.1. Smart Plug and Wake on LAN](#141-smart-plug-and-wake-on-lan)
-    - [1.4.2. Proxmox Installation](#142-proxmox-installation)
+    - [1.4.1. Proxmox Installation](#141-proxmox-installation)
+    - [1.4.2. Smart Plug and Wake on LAN](#142-smart-plug-and-wake-on-lan)
     - [1.4.3. Data and Backup Pools Setup](#143-data-and-backup-pools-setup)
     - [1.4.4. Dataset Encryption](#144-dataset-encryption)
     - [1.4.5. RAID array recovery](#145-raid-array-recovery)
       - [1.4.5.1. OS disk recovery](#1451-os-disk-recovery)
-    - [1.4.6. Enable Email Alerts](#146-enable-email-alerts)
+    - [1.4.6. Enable Mail Alerts](#146-enable-mail-alerts)
     - [1.4.7. Mail notifications for ZFS pools](#147-mail-notifications-for-zfs-pools)
       - [1.4.7.1. Fix for ZED Bug](#1471-fix-for-zed-bug)
     - [1.4.8. UPS configuration](#148-ups-configuration)
       - [1.4.8.1. UPS Mail Notifications](#1481-ups-mail-notifications)
   - [1.5. Proxmox Containers and VMs](#15-proxmox-containers-and-vms)
+  - [1.6. Pi-hole container setup](#16-pi-hole-container-setup)
+  - [1.7. NAS container setup](#17-nas-container-setup)
+    - [1.7.1. GPU Passthrough](#171-gpu-passthrough)
+    - [1.7.2. Cloudflared](#172-cloudflared)
+      - [1.7.2.1. DNS Challenge](#1721-dns-challenge)
 
 This repository contains scripts and configurations to set up a home server based on [Proxmox VE](https://www.proxmox.com/en/)
 and [Proxmox Backup Server](https://www.proxmox.com/en/products/proxmox-backup-server/overview).
@@ -87,37 +92,13 @@ I discovered that I can use free services like Cloudflare Tunnels (`cloudflared`
 
 This guide covers the setup of a Cloudflare Tunnel. I chose this option because Cloudflare is already the registrar for my domain name, and I use it to manage my DNS records.
 
+Regarding the local network configuration, I would suggest to use static IP addresses for all devices you want to regularly access, while keeping DHCP for smartphones and other devices that you do not need to log into remotely. I do not need multiple subnets, I just use one network with a /24 netmask. What I normally do is to set the DHCP server to assign IP addresses in the range of 150-250. You may think that reserving almost 150 static IP addresses is a lot, but it is not, considering that you may have many CTs and VMs running on your server, each with its own local IP address, and you may also have many devices for your home automations (e.g. cameras, lights, blinders actuators, sensors, etc.)
+
 ## 1.4. Server Setup
 
 The setup I describe here is based on my hardware configuration, it assumes you have a similar hardware setup so 3 sets of disks for OS, main storage and backups. And a domain name to access your services from the internet.
 
-### 1.4.1. Smart Plug and Wake on LAN
-
-In the BIOS/UEFI, the server is set to power on automatically whenever power is restored after an outage. I also have a smart plug that can be controlled via Home Assistant or directly through its web interface, allowing me to remotely power cycle the server if needed. The smart plug is connected to the UPS, so it will not drop power during a utility outage. This setup is a preventive measure: if the server ever becomes unreachable on the network, I can forcefully power cycle it via the smart plug to bring it back online.
-
-For extra safety, I have also configured Wake on LAN (WoL). This allows me to remotely wake the server using a WoL tool if it fails to start automatically after a power outage.
-
-First, ensure WoL is enabled in your BIOS settings. Then, in Proxmox, list all available network interfaces:
-
-```bash
-ip a
-```
-
-Check if WoL is enabled on your primary Ethernet interface (for example, `nic0`):
-
-```bash
-ethtool nic0
-```
-
-If it is not enabled, edit `/etc/network/interfaces`:
-
-```ini
-iface nic0 inet manual
-        post-up ethtool -s nic0 wol g
-        pre-down ethtool -s nic0 wol g
-```
-
-### 1.4.2. Proxmox Installation
+### 1.4.1. Proxmox Installation
 
 During the initial installation of Proxmox VE, remember to:
 
@@ -143,6 +124,32 @@ When prompted, set the following options:
 - Disable subscription nag
 - Disable high availability (no-replicas)
 - Disable Corosync (no-replicas)
+
+### 1.4.2. Smart Plug and Wake on LAN
+
+In the BIOS/UEFI, the server is set to power on automatically whenever power is restored after an outage. I also have a smart plug that can be controlled via Home Assistant or directly through its web interface, allowing me to remotely power cycle the server if needed. The smart plug is connected to the UPS, so it will not drop power during a utility outage. This setup is a preventive measure: if the server ever becomes unreachable on the network, I can forcefully power cycle it via the smart plug to bring it back online.
+
+For extra safety, I have also configured Wake on LAN (WoL). This allows me to remotely wake the server using a WoL tool if it fails to start automatically after a power outage.
+
+First, ensure WoL is enabled in your BIOS settings. Then, in Proxmox, list all available network interfaces:
+
+```bash
+ip a
+```
+
+Check if WoL is enabled on your primary Ethernet interface (for example, `nic0`):
+
+```bash
+ethtool nic0
+```
+
+If it is not enabled, edit `/etc/network/interfaces`:
+
+```ini
+iface nic0 inet manual
+        post-up ethtool -s nic0 wol g
+        pre-down ethtool -s nic0 wol g
+```
 
 ### 1.4.3. Data and Backup Pools Setup
 
@@ -359,7 +366,7 @@ If only one entry is listed, you need to update the boot loader entries. The fol
 dpkg-reconfigure grub-efi-amd64
 ```
 
-### 1.4.6. Enable Email Alerts
+### 1.4.6. Enable Mail Alerts
 
 The server needs to be able to send alert emails whenever an error occurs. To facilitate this, a "send-only" SMTP server must be configured.
 
@@ -630,13 +637,13 @@ The server hosts the following containers and VMs, each having an ID that reflec
 
 **Containers:**
 
+- **120 (pihole):** Pi-hole runs in a dedicated container, generated by a Proxmox Community script, since it is only used on the local network.
+- **110 (nas):** A Debian container initially named "nas" because it solely hosted Nextcloud. It now hosts multiple services:
+  - Cloudflared
+  - Traefik
+  - Nextcloud
+  - Passbolt
 - **109 (pbs01):** An instance of Proxmox Backup Server used to perform backups of all other containers and VMs.
-  - **110 (nas):** A Debian container initially named "nas" because it solely hosted Nextcloud. It now hosts multiple services:
-    - Cloudflared
-    - Traefik
-    - Nextcloud
-    - Passbolt
-  - **120 (pihole):** Pi-hole runs in a dedicated container, generated by a Proxmox Community script, since it is only used on the local network.
 
 **VMs:**
 
@@ -645,3 +652,200 @@ The server hosts the following containers and VMs, each having an ID that reflec
 Cloudflared and Traefik provide secure remote access to all services. They could potentially be moved to a dedicated container, as Home Assistant also depends on them for remote access. However, I prefer to keep them in the "nas" container for simplicity. If I add more services in the future, I will consider moving them to a standalone container.
 
 The following sections describe the configuration and setup process for each container and VM.
+
+## 1.6. Pi-hole container setup
+
+`Pi-hole` is a DNS sinkhole that can be used to block ads and other unwanted content, it can be used together with `Unbound` to create a private DNS server.
+
+`Pi-hole` is installed in a dedicated LXC container using the available
+proxmox helper scripts
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/pihole.sh)"
+```
+
+During setup phase I specified the following settings for the container:
+
+- CT ID:  120
+- IP:     <your_local_subnet>.20
+- RAM:    4GB
+- Disk:   8GB
+- Cores:  2
+- Unbound: configured as recursive DNS server
+
+I wanted all the traffick from Unbound to the top level DNS servers to be also
+encrypted so I added the following lines to the unbound configuration
+at the end of `/etc/unbound/unbound.conf.d/pi-hole.conf`
+
+```ini
+# TLS upstream config
+  tcp-upstream: yes
+  tls-upstream: yes
+  tls-cert-bundle: "/etc/ssl/certs/ca-certificates.crt"
+
+forward-zone:
+  name: "."
+  forward-tls-upstream: yes
+  forward-addr: 9.9.9.9@853#dns.quad9.net
+  forward-addr: 149.112.112.112@853#dns.quad9.net
+  forward-addr: 2620:fe::fe@853#dns.quad9.net
+  forward-addr: 2620:fe::9@853#dns.quad9.net
+```
+
+After changing the configuration remember to restart `Pi-hole` to apply
+the new settings.
+
+## 1.7. NAS container setup
+
+The `nas` container was born to host an instance of Nextcloud, but it now hosts multiple services, I should probably find a better name for it.
+
+The container is based on Debian 13 with the following settings:
+
+- Type:                 Priviledged
+- IP                    <your_local_subnet>.10
+- CT ID                 110
+- Hostname:             nas
+- DiskSize:             1000G
+- CPU:                  8
+- RAM                   32768
+
+In Options -> Features add nesting
+
+Install docker following official instructions
+
+Enable ssh login
+
+```shell
+echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/nas.conf
+```
+
+The `nas` container runs several services using `docker-compose`:
+
+- Cloudflared - to expose services to the internet
+- Traefik - to route traffic to the correct service depending on the CNAME (e.g. vault.domain.com -> Passbolt)
+- Nextcloud - file and media sharing
+- Passbolt - password manager
+
+Consistent with the structure of this repository, services are organized into separate directories. Each directory contains at least a `docker-compose.yml` file and a `.env` file (the `.env` files are excluded from version control as they contain sensitive secrets).
+
+To start a service, navigate to its directory and run:
+
+```shell
+docker compose up -d
+```
+
+To stop a service, use:
+
+```shell
+docker compose down
+```
+
+Additional details for each service are provided in the following sections.
+
+### 1.7.1. GPU Passthrough
+
+My CPU has has an integrated graphic card that can accelarate some video encoding/decoding tasks. I passthrough the GPU to the `nas` container to allow Docker to use it
+
+First, identify the GPU device on the host system:
+
+```shell
+lspci -v
+08:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Cezanne [Radeon Vega Series / Radeon Vega Mobile Series] (rev c8) (prog-if 00 [VGA controller])
+```
+
+```shell
+lspci -nn
+08:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Cezanne [Radeon Vega Series / Radeon Vega Mobile Series] [1002:1638] (rev c8)
+```
+
+On the host check which is the correspondig `/dev/dri/renderD*` and `/dev/dri/card*` (amdgpu driver)
+
+```shell
+ls -l /sys/class/drm/renderD*/device/driver
+ls -l /sys/class/drm/card*/device/driver
+
+/dev/dri/card1
+/dev/dri/renderD129
+```
+
+On LXC container
+
+```shell
+apt install pciutils
+apt install mesa-utils
+```
+
+find the gid for the render and video groups
+
+```shell
+cat /etc/group | grep render
+cat /etc/group | grep video
+```
+
+In my case:
+
+```shell
+video 44
+render 992
+```
+
+On the host
+Using the GUI go to the LXC settings and the `Resources -> Add -> Device Passthrough`
+Add the identified devices and set the correct render and video group of the target
+
+e.g.
+`/dev/dri/renderD129 gid=992`
+`/dev/dri/card1 gid=44`
+
+### 1.7.2. Cloudflared
+
+Cloudflare tunnel avoids exposing directly the NAS to the internet using a public ip address.
+A tunnel is created between the NAS and the cloudflare servers.
+
+I had to enable this service beacause I was having troubles with my ISP dropping
+randomly the public IPv6 assigned to the NAS and requiring me to restart
+the router to restore public access to the NAS.
+
+To enable cloudflare tunnel a service `cloudflared` shall run on the NAS.
+It can be executed inside a docker container
+
+If you want to use cloudflare tunnel you need to first create an account
+on cloudflare and use it to manage your DNS rules.
+
+To enable cloudflare tunnel delete first all the A, AAAA, and CNAME
+entries in your DNS rules then go to the `Zero Trust` section in your cloudflare
+account and subscribe to the free plan.
+
+Then click on `networks` -> `connectors` and create a new tunnel.
+Save the generated `token`, as it will be required later to start the `cloudflared` service.
+
+In the generated connectors, publish all required applications.
+For each application, specify the desired domain and subdomain. Cloudflare will automatically regenerate the necessary DNS rules.
+
+You also need to specify the endpoint of the tunnel. If you plan to route the requests through Traefik (as I do), choose `HTTPS` as the service and type `traefik` into the URL field. This will resolve on the local network to the Traefik container's address.
+
+Ensure that the `cloudflared` service is started in a container on the NAS. For the complete compose configuration, refer to the `cloudflared` directory in this repository.
+
+You will need to manually create a `.env` file in that same directory containing your tunnel token:
+
+```env
+CLOUDFLARED_TUNNEL_TOKEN=your_token_here
+```
+
+To properly route traffic, the `cloudflared` container must be linked to the `traefik` network. In the `docker-compose.yml` file, the `traefik` network is declared as `external`. This means `docker compose` expects the network to already exist on the host rather than creating it automatically.
+
+You can create this network beforehand by running:
+
+```shell
+docker network create traefik
+```
+
+The `cloudflared` service will establish a tunnel to cloudflare and all the traffic will be conveyed through it.
+No ports need to be exposed to the internet.
+
+#### 1.7.2.1. DNS Challenge
+
+Cloudflare tunnel do not work with traefik http or TLS challenge for the HTTPS certificate validation and renewal, so dns challenge is needed.
+
+You need to create an API token in cloudflare with `Edit zone DNS` template, save the token as it will be required later for the traefik configuration.
+

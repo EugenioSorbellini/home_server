@@ -1,0 +1,36 @@
+tls:
+  options:
+    tls_home_assistant:
+      minVersion: VersionTLS12
+      sniStrict: true
+      curvePreferences:
+        - CurveP521
+        - CurveP384
+      cipherSuites:
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+    # From Passbolt guide https://help.passbolt.com/configure/https/ce/docker/auto.html
+    tls_passbolt:
+      minVersion: VersionTLS12
+      sniStrict: true
+      curvePreferences:
+        - CurveP521
+        - CurveP384
+      cipherSuites:
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+    tls_wetty:
+      minVersion: VersionTLS12
+      sniStrict: true
+      curvePreferences:
+        - CurveP521
+        - CurveP384
+      cipherSuites:
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256

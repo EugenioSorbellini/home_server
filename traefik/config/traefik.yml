@@ -1,0 +1,75 @@
+# static configuration
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: true
+
+log:
+  level: INFO
+
+api:
+  # This expose a web UI on port 8080 (do not make this port accessible from the internet!!)
+  dashboard: true
+  # The API listen on entrypoint and port 8080, ok since this is not exposed to internet
+  insecure: true
+  # Enable additional endpoints for debugging and profiling, served under /debug/
+  debug: true
+
+providers:
+# We use Docker but Traefik can be interfaced with other container engines (e.g. Kubernetes)
+  docker:
+    # You have to declare explicitly that a container is exposed (more secure)
+    exposedByDefault: false
+  # Path to the directory that contains configuration files
+  file:
+    directory: /etc/traefik/conf
+    # check for file changes
+    watch: true
+  
+
+entryPoints:
+  http:
+    address: :80
+    # Redirect every insecure connection to HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: https
+          scheme: https
+          permanent: true
+  https:
+    address: :443
+    transport:
+      respondingTimeouts:
+        readTimeout: 24h # Allows uploads > 100MB; prevents connection reset due to chunking (public upload-only links)
+    # If you want to enable HTTP/3 support, uncomment the line below
+    # http3: {}
+
+# This is for creation (and automatic renewal) of SSL certificates using Let's Encrypt free service
+certificatesResolvers:
+  # Certificate resolver for tests
+  letsencrypt:
+    acme:
+      # path of production certificates in the Traefik container
+      storage: "/ssl-certs/acme.json"
+      caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      # use a TLS challenge to issue the certificate
+      # tlschallenge: true
+      #httpChallenge:
+      #  entryPoint: http
+
+      # dns challenge
+      dnsChallenge:
+        provider: cloudflare
+  staging:
+    acme:
+      # path of test certificates in the Traefik container
+      storage: "/ssl-certs/staging-acme.json"
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      # use a TLS challenge to issue the certificate
+      #tlschallenge: true
+      #httpChallenge:
+      #  entryPoint: http
+
+      # dns challenge
+      dnsChallenge:
+        provider: cloudflare
