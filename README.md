@@ -9,19 +9,22 @@
     - [1.4.2. Smart Plug and Wake on LAN](#142-smart-plug-and-wake-on-lan)
     - [1.4.3. Data and Backup Pools Setup](#143-data-and-backup-pools-setup)
     - [1.4.4. Dataset Encryption](#144-dataset-encryption)
-    - [1.4.5. RAID array recovery](#145-raid-array-recovery)
-      - [1.4.5.1. OS disk recovery](#1451-os-disk-recovery)
+    - [1.4.5. RAID Array Recovery](#145-raid-array-recovery)
+      - [1.4.5.1. OS Disk Recovery](#1451-os-disk-recovery)
     - [1.4.6. Enable Mail Alerts](#146-enable-mail-alerts)
     - [1.4.7. Mail notifications for ZFS pools](#147-mail-notifications-for-zfs-pools)
-      - [1.4.7.1. Fix for ZED Bug](#1471-fix-for-zed-bug)
-    - [1.4.8. UPS configuration](#148-ups-configuration)
-      - [1.4.8.1. UPS Mail Notifications](#1481-ups-mail-notifications)
+      - [1.4.7.1. Fix for ZED bug](#1471-fix-for-zed-bug)
+    - [1.4.8. UPS Configuration](#148-ups-configuration)
+      - [1.4.8.1. UPS mail notifications](#1481-ups-mail-notifications)
   - [1.5. Proxmox Containers and VMs](#15-proxmox-containers-and-vms)
-  - [1.6. Pi-hole container setup](#16-pi-hole-container-setup)
-  - [1.7. NAS container setup](#17-nas-container-setup)
+  - [1.6. Pi-hole Container Setup](#16-pi-hole-container-setup)
+  - [1.7. NAS Container Setup](#17-nas-container-setup)
     - [1.7.1. GPU Passthrough](#171-gpu-passthrough)
     - [1.7.2. Cloudflared](#172-cloudflared)
       - [1.7.2.1. DNS Challenge](#1721-dns-challenge)
+    - [1.7.3. Traefik](#173-traefik)
+    - [1.7.4. Passbolt](#174-passbolt)
+    - [1.7.5. Nextcloud](#175-nextcloud)
 
 This repository contains scripts and configurations to set up a home server based on [Proxmox VE](https://www.proxmox.com/en/)
 and [Proxmox Backup Server](https://www.proxmox.com/en/products/proxmox-backup-server/overview).
@@ -92,11 +95,11 @@ I discovered that I can use free services like Cloudflare Tunnels (`cloudflared`
 
 This guide covers the setup of a Cloudflare Tunnel. I chose this option because Cloudflare is already the registrar for my domain name, and I use it to manage my DNS records.
 
-Regarding the local network configuration, I would suggest to use static IP addresses for all devices you want to regularly access, while keeping DHCP for smartphones and other devices that you do not need to log into remotely. I do not need multiple subnets, I just use one network with a /24 netmask. What I normally do is to set the DHCP server to assign IP addresses in the range of 150-250. You may think that reserving almost 150 static IP addresses is a lot, but it is not, considering that you may have many CTs and VMs running on your server, each with its own local IP address, and you may also have many devices for your home automations (e.g. cameras, lights, blinders actuators, sensors, etc.)
+Regarding the local network configuration, I would suggest using static IP addresses for all devices you want to regularly access, while keeping DHCP for smartphones and other devices that you do not need to log into remotely. I do not need multiple subnets; I just use one network with a /24 netmask. What I normally do is set the DHCP server to assign IP addresses in the range of 150–250. You may think that reserving almost 150 static IP addresses is a lot, but it is not, considering that you may have many CTs and VMs running on your server, each with its own local IP address, and you may also have many devices for your home automations (e.g., cameras, lights, blind actuators, sensors, etc.).
 
 ## 1.4. Server Setup
 
-The setup I describe here is based on my hardware configuration, it assumes you have a similar hardware setup so 3 sets of disks for OS, main storage and backups. And a domain name to access your services from the internet.
+The setup I describe here is based on my hardware configuration. It assumes you have a similar hardware setup—three sets of disks for OS, main storage, and backups—and a domain name to access your services from the internet.
 
 ### 1.4.1. Proxmox Installation
 
@@ -221,7 +224,7 @@ To set up the `cron` job, run the following command to edit your crontab:
 crontab -e
 ```
 
-Add the following lines to the cron table. The `MAILTO=""` option prevents `cron` from sending redundant emails, as the `zpool scrub` command via ZED will already send an email report containing the final outcome:
+Add the following lines to the crontab. The `MAILTO=""` option prevents `cron` from sending redundant emails, as `zpool scrub` via ZED will already send an email report containing the final outcome:
 
 ```cron
 MAILTO=""
@@ -287,7 +290,7 @@ These mount commands pass the `-l` (load key) and `-u` (unload key) flags, respe
 
 Finally, log in to the Proxmox GUI, navigate to `Datacenter -> Storage`, and add two new ZFS storage units. Give them IDs like `tank-encrypted` (pointing to the `tank/encrypted` dataset) and `archive-encrypted` (pointing to the `archive/encrypted` dataset). Make sure to enable the `Thin provision` option for both.
 
-### 1.4.5. RAID array recovery
+### 1.4.5. RAID Array Recovery
 
 It may happen that one of the disks in a RAID array fails. In that case, the pool will enter a `DEGRADED` state.
 
@@ -340,7 +343,7 @@ After the disks are completely synced, you can optionally force a manual coheren
 zpool scrub <pool_name>
 ```
 
-#### 1.4.5.1. OS disk recovery
+#### 1.4.5.1. OS Disk Recovery
 
 If the failed disk was part of the OS pool (`rpool`), the recovery procedure is identical to the one above, but additional steps are required to ensure the system remains bootable from the replacement disk.
 
@@ -368,13 +371,13 @@ dpkg-reconfigure grub-efi-amd64
 
 ### 1.4.6. Enable Mail Alerts
 
-The server needs to be able to send alert emails whenever an error occurs. To facilitate this, a "send-only" SMTP server must be configured.
+The server needs to be able to send alert emails whenever an error occurs. To facilitate this, a send-only SMTP relay must be configured.
 
 To combat spam, most ISPs completely block outbound traffic on port 25. You can verify whether port 25 is blocked by your ISP using the command `telnet <external_mailserver_address> 25`.
 The standard alternative is to use port 587. However, port 587 is a client submission port requiring authenticated credentials (username and password) to an existing mail server. Once authenticated, that mail server will forward your message to external servers over port 25.
-As an example, if `<tom@foo.com>` sends an email to `<carl@bar.info>`:
+For example, if `<tom@foo.com>` sends an email to `<carl@bar.info>`:
 
-1. Tom connects to his submission port (587) and authenticates identically to his `foo.com` SMTP server (`smtp.foo.com`) using his credentials.
+1. Tom connects to the submission port (587) and authenticates with his `foo.com` SMTP server (`smtp.foo.com`) using his credentials.
 2. `smtp.foo.com` recognizes that `bar.info` is an external domain and forwards the email to the target SMTP server (`smtp.bar.info`) over port 25.
 3. Carl subsequently opens his `bar.info` mailbox over POP3 or IMAP to read the message.
 
@@ -438,7 +441,7 @@ ZED_SYSLOG_TAG="zed"
 ZED_SYSLOG_SUBCLASS_EXCLUDE="history_event"
 ```
 
-#### 1.4.7.1. Fix for ZED Bug
+#### 1.4.7.1. Fix for ZED bug
 
 Unfortunately, a known bug prevents ZED from sending a notification if a drive completely fails while the server is powered off. In this edge case, when the server starts back up, the pool status will correctly display `DEGRADED`, but ZED will fail to trigger any email notifications alerting you of the failure.
 
@@ -474,7 +477,7 @@ Check that the new cron schedule is active:
 crontab -l
 ```
 
-### 1.4.8. UPS configuration
+### 1.4.8. UPS Configuration
 
 This specific configuration is tailored for the CyberPower CP1500PFCLCD UPS model. However, the overall procedure will be very similar for other UPS models or brands supported by Network UPS Tools (NUT).
 
@@ -586,9 +589,9 @@ systemctl enable nut.target
 systemctl enable nut-driver.target
 ```
 
-#### 1.4.8.1. UPS Mail Notifications
+#### 1.4.8.1. UPS mail notifications
 
-We need to configure NUT to execute a shell script that pushes an email whenever a power event happens. Edit `/etc/nut/upsmon.conf` and append these lines:
+NUT needs to be configured to execute a shell script that sends an email whenever a power event occurs. Edit `/etc/nut/upsmon.conf` and append these lines:
 
 ```ini
 NOTIFYCMD "/etc/nut/notify.sh"
@@ -633,7 +636,7 @@ systemctl restart nut-monitor.service
 
 ## 1.5. Proxmox Containers and VMs
 
-The server hosts the following containers and VMs, each having an ID that reflects its last IP address octet:
+The server hosts the following containers and VMs. Each ID reflects the last octet of the container's or VM's IP address:
 
 **Containers:**
 
@@ -647,24 +650,24 @@ The server hosts the following containers and VMs, each having an ID that reflec
 
 **VMs:**
 
-- **115 (homeassistant):** Home Assistant is installed in a dedicated VM, as running it in a container is not recommended by the HA community and poses certain limitations.
+- **115 (homeassistant):** Home Assistant is installed in a dedicated VM, as running it in a container is not recommended by the Home Assistant community and poses certain limitations.
 
 Cloudflared and Traefik provide secure remote access to all services. They could potentially be moved to a dedicated container, as Home Assistant also depends on them for remote access. However, I prefer to keep them in the "nas" container for simplicity. If I add more services in the future, I will consider moving them to a standalone container.
 
 The following sections describe the configuration and setup process for each container and VM.
 
-## 1.6. Pi-hole container setup
+## 1.6. Pi-hole Container Setup
 
-`Pi-hole` is a DNS sinkhole that can be used to block ads and other unwanted content, it can be used together with `Unbound` to create a private DNS server.
+`Pi-hole` is a DNS sinkhole that can be used to block ads and other unwanted content. It can be used together with `Unbound` to create a private DNS server.
 
 `Pi-hole` is installed in a dedicated LXC container using the available
-proxmox helper scripts
+Proxmox helper scripts:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/pihole.sh)"
 ```
 
-During setup phase I specified the following settings for the container:
+During the setup phase, I specified the following settings for the container:
 
 - CT ID:  120
 - IP:     <your_local_subnet>.20
@@ -673,9 +676,9 @@ During setup phase I specified the following settings for the container:
 - Cores:  2
 - Unbound: configured as recursive DNS server
 
-I wanted all the traffick from Unbound to the top level DNS servers to be also
-encrypted so I added the following lines to the unbound configuration
-at the end of `/etc/unbound/unbound.conf.d/pi-hole.conf`
+I wanted all traffic from Unbound to the top-level DNS servers to be encrypted as well,
+so I added the following lines to the Unbound configuration
+at the end of `/etc/unbound/unbound.conf.d/pi-hole.conf`:
 
 ```ini
 # TLS upstream config
@@ -692,16 +695,16 @@ forward-zone:
   forward-addr: 2620:fe::9@853#dns.quad9.net
 ```
 
-After changing the configuration remember to restart `Pi-hole` to apply
+After changing the configuration, remember to restart `Pi-hole` to apply
 the new settings.
 
-## 1.7. NAS container setup
+## 1.7. NAS Container Setup
 
-The `nas` container was born to host an instance of Nextcloud, but it now hosts multiple services, I should probably find a better name for it.
+The `nas` container was originally created to host an instance of Nextcloud, but it now hosts multiple services—I should probably find a better name for it.
 
 The container is based on Debian 13 with the following settings:
 
-- Type:                 Priviledged
+- Type:                 Privileged
 - IP                    <your_local_subnet>.10
 - CT ID                 110
 - Hostname:             nas
@@ -709,11 +712,11 @@ The container is based on Debian 13 with the following settings:
 - CPU:                  8
 - RAM                   32768
 
-In Options -> Features add nesting
+In `Options -> Features`, enable nesting.
 
-Install docker following official instructions
+Install Docker following the official instructions.
 
-Enable ssh login
+Enable SSH login:
 
 ```shell
 echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/nas.conf
@@ -744,7 +747,7 @@ Additional details for each service are provided in the following sections.
 
 ### 1.7.1. GPU Passthrough
 
-My CPU has has an integrated graphic card that can accelarate some video encoding/decoding tasks. I passthrough the GPU to the `nas` container to allow Docker to use it
+My CPU has an integrated graphics card that can accelerate some video encoding/decoding tasks. I pass through the GPU to the `nas` container to allow Docker to use it.
 
 First, identify the GPU device on the host system:
 
@@ -758,7 +761,7 @@ lspci -nn
 08:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Cezanne [Radeon Vega Series / Radeon Vega Mobile Series] [1002:1638] (rev c8)
 ```
 
-On the host check which is the correspondig `/dev/dri/renderD*` and `/dev/dri/card*` (amdgpu driver)
+On the host, check which `/dev/dri/renderD*` and `/dev/dri/card*` devices correspond to the GPU (amdgpu driver):
 
 ```shell
 ls -l /sys/class/drm/renderD*/device/driver
@@ -768,14 +771,14 @@ ls -l /sys/class/drm/card*/device/driver
 /dev/dri/renderD129
 ```
 
-On LXC container
+On the LXC container:
 
 ```shell
 apt install pciutils
 apt install mesa-utils
 ```
 
-find the gid for the render and video groups
+Find the GID for the `render` and `video` groups:
 
 ```shell
 cat /etc/group | grep render
@@ -789,31 +792,31 @@ video 44
 render 992
 ```
 
-On the host
-Using the GUI go to the LXC settings and the `Resources -> Add -> Device Passthrough`
-Add the identified devices and set the correct render and video group of the target
+On the host, using the GUI, go to the LXC settings and navigate to `Resources -> Add -> Device Passthrough`.
+Add the identified devices and set the correct `render` and `video` group IDs for the target.
 
-e.g.
-`/dev/dri/renderD129 gid=992`
-`/dev/dri/card1 gid=44`
+For example:
+
+- `/dev/dri/renderD129 gid=992`
+- `/dev/dri/card1 gid=44`
 
 ### 1.7.2. Cloudflared
 
-Cloudflare tunnel avoids exposing directly the NAS to the internet using a public ip address.
-A tunnel is created between the NAS and the cloudflare servers.
+A Cloudflare Tunnel avoids exposing the NAS directly to the internet using a public IP address.
+Instead, a tunnel is created between the NAS and the Cloudflare servers.
 
-I had to enable this service beacause I was having troubles with my ISP dropping
-randomly the public IPv6 assigned to the NAS and requiring me to restart
-the router to restore public access to the NAS.
+I had to enable this service because my ISP was randomly dropping
+the public IPv6 address assigned to the NAS, requiring me to restart
+the router to restore public access.
 
-To enable cloudflare tunnel a service `cloudflared` shall run on the NAS.
-It can be executed inside a docker container
+To enable a Cloudflare Tunnel, the `cloudflared` service must run on the NAS.
+It can be executed inside a Docker container.
 
-If you want to use cloudflare tunnel you need to first create an account
-on cloudflare and use it to manage your DNS rules.
+If you want to use a Cloudflare Tunnel, you need to first create an account
+on Cloudflare and use it to manage your DNS records.
 
-To enable cloudflare tunnel delete first all the A, AAAA, and CNAME
-entries in your DNS rules then go to the `Zero Trust` section in your cloudflare
+To enable a Cloudflare Tunnel, first delete all existing A, AAAA, and CNAME
+entries in your DNS records, then go to the `Zero Trust` section in your Cloudflare
 account and subscribe to the free plan.
 
 Then click on `networks` -> `connectors` and create a new tunnel.
@@ -822,7 +825,7 @@ Save the generated `token`, as it will be required later to start the `cloudflar
 In the generated connectors, publish all required applications.
 For each application, specify the desired domain and subdomain. Cloudflare will automatically regenerate the necessary DNS rules.
 
-You also need to specify the endpoint of the tunnel. If you plan to route the requests through Traefik (as I do), choose `HTTPS` as the service and type `traefik` into the URL field. This will resolve on the local network to the Traefik container's address.
+You also need to specify the endpoint of the tunnel. If you plan to route requests through Traefik (as I do), choose `HTTPS` as the service and type `traefik` into the URL field. This will resolve on the local network to the Traefik container's address. I also had to enable the `Match SNI to Host` and `HTTP2 connection` options in the tunnel configuration to make it work with Traefik.
 
 Ensure that the `cloudflared` service is started in a container on the NAS. For the complete compose configuration, refer to the `cloudflared` directory in this repository.
 
@@ -840,12 +843,76 @@ You can create this network beforehand by running:
 docker network create traefik
 ```
 
-The `cloudflared` service will establish a tunnel to cloudflare and all the traffic will be conveyed through it.
+The `cloudflared` service will establish a tunnel to Cloudflare, and all traffic will be conveyed through it.
 No ports need to be exposed to the internet.
 
 #### 1.7.2.1. DNS Challenge
 
-Cloudflare tunnel do not work with traefik http or TLS challenge for the HTTPS certificate validation and renewal, so dns challenge is needed.
+Cloudflare Tunnels do not work with Traefik's HTTP or TLS challenge for HTTPS certificate validation and renewal, so a DNS challenge is needed instead.
 
-You need to create an API token in cloudflare with `Edit zone DNS` template, save the token as it will be required later for the traefik configuration.
+You need to create an API token in Cloudflare using the `Edit zone DNS` template. Save the token, as it will be required later for the Traefik configuration.
 
+### 1.7.3. Traefik
+
+Traefik is a reverse proxy that can be used to route traffic to different services based on the domain name.
+
+All the configuration is stored in the `traefik` directory in this repository.
+
+Before starting the Traefik container, you need to create all the required networks. I chose to use separate networks to isolate the services from each other.
+
+```shell
+docker network create traefik
+docker network create passbolt
+docker network create passbolt_db
+docker network create nextcloud-aio 
+docker network create nextcloud-frontend
+```
+
+You also need to create a `.env` file in the `traefik` directory containing the following secrets:
+
+```env
+TRAEFIK_WEBPORT=<web port for traefik dashboard default should be 8080>
+ACME_EMAIL=<mail you want to use for acme certificates e.g. info@yourdomain.com>
+CLOUDFLARE_DNS_TOKEN=<token for dns challenges you should setup this in cloudflare and copy it there>
+CLOUDFLARE_EMAIL=<mail you used in cloudflare registration, is needed for authentication together with the token>
+NEXTCLOUD_DOMAIN=<domain you want to use for nextcloud e.g. nextcloud.yourdomain.com>
+HOMEASSISTANT_DOMAIN=<domain you want to use for your HomeAssistant instance e.g. homeassistant.yourdomain.com>
+NEXTCLOUD_URL=<this is the url to the local nextcloud frontend container e.g. http://nextcloud-aio-apache:11000>
+HOMEASSISTANT_URL=<this is the url to the homeassistant VM e.g. http://<your_local_subnet>.15:8123/>
+```
+
+Note that `NEXTCLOUD_URL` and `HOMEASSISTANT_URL` use HTTP, not HTTPS, as TLS termination is handled by Traefik. You could also avoid handling certificates in Traefik entirely, since the Cloudflare Tunnel is already encrypted. In that case, you would use the `HTTP` protocol in the tunnel configuration instead of `HTTPS` and remove the TLS configuration from Traefik. However, I have not tried this option, since having Traefik handle TLS termination provides an extra layer of security.
+
+### 1.7.4. Passbolt
+
+Passbolt is a web-based password manager that can be self-hosted. It also has a polished mobile app.
+
+All the configuration is stored in the `passbolt` directory in this repository.
+
+You need to create a `.env` file in that directory containing the following secrets:
+
+```env
+# db
+MYSQL_DATABASE=<database name you want to use for passbolt>
+MYSQL_USER=<db user you want to use for passbolt>
+MYSQL_PASSWORD=<db password you want to use for passbolt>
+# pasbolt
+MAIL_HOST=<mail relay host e.g. smtp.gmail.com>
+MAIL_PORT=<mail relay port e.g. 587>
+MAIL_TLS=<true or false>
+MAIL_FROM=<passbolt mails will be sent from this address e.g. passbolt@yourdomain.com>
+MAIL_USERNAME=<your mail relay username>
+MAIL_PASSWORD=<your mail relay password>
+DOMAIN=<domain you want to use for passbolt e.g. vault.yourdomain.com>
+BASE_URL=https://${DOMAIN}
+KEY_NAME=<key name for passbolt e.g. vault>
+KEY_EMAIL=${KEY_NAME}@${DOMAIN}
+```
+
+### 1.7.5. Nextcloud
+
+Nextcloud is an open-source cloud storage solution, similar to the Google suite (Drive, Photos, Calendar, Contacts, etc.).
+You can deploy Nextcloud in many ways; I chose to use the `nextcloud-aio` Docker image, which is currently the simplest and recommended method.
+Since the [nextcloud-aio](https://github.com/nextcloud/all-in-one) repository contains all the information you need to deploy it, I will not repeat it here.
+
+All the configuration I use is stored in the `nextcloud` directory in this repository.

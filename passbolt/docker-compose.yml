@@ -1,0 +1,66 @@
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: true
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - database_volume:/var/lib/mysql
+    networks:
+      - passbolt_db
+
+  passbolt:
+    image: passbolt/passbolt:latest-ce
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      APP_FULL_BASE_URL: ${BASE_URL}
+      APP_DEFAULT_LOCALE: it_IT
+      APP_DEFAULT_TIMEZONE: Europe/Rome
+      DATASOURCES_DEFAULT_HOST: db
+      DATASOURCES_DEFAULT_DATABASE: ${MYSQL_DATABASE}
+      DATASOURCES_DEFAULT_USERNAME: ${MYSQL_USER}
+      DATASOURCES_DEFAULT_PASSWORD: ${MYSQL_PASSWORD}
+      PASSBOLT_KEY_NAME: ${KEY_NAME}
+      PASSBOLT_KEY_EMAIL: ${KEY_EMAIL}
+      EMAIL_DEFAULT_FROM_NAME: Passbolt
+      EMAIL_DEFAULT_FROM: ${MAIL_FROM}
+      EMAIL_TRANSPORT_DEFAULT_HOST: ${MAIL_HOST}
+      EMAIL_TRANSPORT_DEFAULT_PORT: ${MAIL_PORT}
+      EMAIL_TRANSPORT_DEFAULT_TLS: ${MAIL_TLS}
+      EMAIL_TRANSPORT_DEFAULT_USERNAME: ${MAIL_USERNAME}
+      EMAIL_TRANSPORT_DEFAULT_PASSWORD: ${MAIL_PASSWORD}
+    volumes:
+      - gpg_volume:/etc/passbolt/gpg
+      - jwt_volume:/etc/passbolt/jwt
+    networks:
+      - passbolt_db
+      - passbolt
+    command: ["/usr/bin/wait-for.sh", "-t", "0", "db:3306", "--", "/docker-entrypoint.sh"]
+    # ports:
+    #   - 8082:80
+    #   - 8443:443
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "passbolt"
+      traefik.http.routers.passbolt.entrypoints: "https"
+      traefik.http.routers.passbolt.rule: "Host(`${DOMAIN}`)"
+      traefik.http.routers.passbolt.middlewares: "passbolt-secure-headers@file"
+      traefik.http.routers.passbolt.tls: "true"
+      traefik.http.routers.passbolt.tls.options: "tls_passbolt@file"
+      traefik.http.routers.passbolt.tls.certresolver: "letsencrypt"
+
+volumes:
+  database_volume:
+  gpg_volume:
+  jwt_volume:
+
+networks:
+  passbolt:
+    external: true
+  passbolt_db:
+    external: true
