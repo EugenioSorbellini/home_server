@@ -16,6 +16,8 @@ services:
   traefik:
     image: traefik:3
     restart: unless-stopped
+    env_file:
+      - /root/vault/traefik.env
     environment:
       - NEXTCLOUD_DOMAIN=${NEXTCLOUD_DOMAIN}
       - HOMEASSISTANT_DOMAIN=${HOMEASSISTANT_DOMAIN}
@@ -23,8 +25,6 @@ services:
       - HOMEASSISTANT_URL=${HOMEASSISTANT_URL}
       - TRAEFIK_CERTIFICATESRESOLVERS_STAGING_ACME_EMAIL=${ACME_EMAIL}
       - TRAEFIK_CERTIFICATESRESOLVERS_PRODUCTION_ACME_EMAIL=${ACME_EMAIL}
-      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}
-      - CF_DNS_API_TOKEN=${CLOUDFLARE_DNS_TOKEN}
     ports:
       # These are the ports used access NAS services
       # - 80:80

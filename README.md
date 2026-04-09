@@ -2,29 +2,35 @@
 
 - [1. Home Server](#1-home-server)
   - [1.1. My Hardware](#11-my-hardware)
-  - [1.2. Monthly Costs](#12-monthly-costs)
-  - [1.3. Router Setup](#13-router-setup)
-  - [1.4. Server Setup](#14-server-setup)
-    - [1.4.1. Proxmox Installation](#141-proxmox-installation)
-    - [1.4.2. Smart Plug and Wake on LAN](#142-smart-plug-and-wake-on-lan)
-    - [1.4.3. Data and Backup Pools Setup](#143-data-and-backup-pools-setup)
-    - [1.4.4. Dataset Encryption](#144-dataset-encryption)
-    - [1.4.5. RAID Array Recovery](#145-raid-array-recovery)
-      - [1.4.5.1. OS Disk Recovery](#1451-os-disk-recovery)
-    - [1.4.6. Enable Mail Alerts](#146-enable-mail-alerts)
-    - [1.4.7. Mail notifications for ZFS pools](#147-mail-notifications-for-zfs-pools)
-      - [1.4.7.1. Fix for ZED bug](#1471-fix-for-zed-bug)
-    - [1.4.8. UPS Configuration](#148-ups-configuration)
-      - [1.4.8.1. UPS mail notifications](#1481-ups-mail-notifications)
-  - [1.5. Proxmox Containers and VMs](#15-proxmox-containers-and-vms)
-  - [1.6. Pi-hole Container Setup](#16-pi-hole-container-setup)
-  - [1.7. NAS Container Setup](#17-nas-container-setup)
-    - [1.7.1. GPU Passthrough](#171-gpu-passthrough)
-    - [1.7.2. Cloudflared](#172-cloudflared)
-      - [1.7.2.1. DNS Challenge](#1721-dns-challenge)
-    - [1.7.3. Traefik](#173-traefik)
-    - [1.7.4. Passbolt](#174-passbolt)
-    - [1.7.5. Nextcloud](#175-nextcloud)
+    - [1.1.1. Some considerations on the HW](#111-some-considerations-on-the-hw)
+  - [1.2. Router Setup](#12-router-setup)
+  - [1.3. Server Setup](#13-server-setup)
+    - [1.3.1. Proxmox Installation](#131-proxmox-installation)
+    - [1.3.2. Smart Plug and Wake on LAN](#132-smart-plug-and-wake-on-lan)
+    - [1.3.3. Data and Backup Pools Setup](#133-data-and-backup-pools-setup)
+    - [1.3.4. Dataset Encryption](#134-dataset-encryption)
+    - [1.3.5. RAID Array Recovery](#135-raid-array-recovery)
+      - [1.3.5.1. OS Disk Recovery](#1351-os-disk-recovery)
+    - [1.3.6. Enable Mail Alerts](#136-enable-mail-alerts)
+    - [1.3.7. Mail notifications for ZFS pools](#137-mail-notifications-for-zfs-pools)
+      - [1.3.7.1. Fix for ZED bug](#1371-fix-for-zed-bug)
+    - [1.3.8. UPS Configuration](#138-ups-configuration)
+      - [1.3.8.1. UPS mail notifications](#1381-ups-mail-notifications)
+  - [1.4. Proxmox Containers and VMs](#14-proxmox-containers-and-vms)
+  - [1.5. Pi-hole Container Setup](#15-pi-hole-container-setup)
+  - [1.6. NAS Container Setup](#16-nas-container-setup)
+    - [1.6.1. GPU Passthrough](#161-gpu-passthrough)
+    - [1.6.2. Cloudflared](#162-cloudflared)
+      - [1.6.2.1. DNS Challenge](#1621-dns-challenge)
+    - [1.6.3. Traefik](#163-traefik)
+    - [1.6.4. Passbolt](#164-passbolt)
+    - [1.6.5. Nextcloud](#165-nextcloud)
+      - [1.6.5.1. Nextcloud stop script](#1651-nextcloud-stop-script)
+    - [1.6.6. Wetty](#166-wetty)
+  - [1.7. Home Assistant VM](#17-home-assistant-vm)
+  - [1.8. Backups](#18-backups)
+    - [1.8.1. Remote Sync to S3 storage](#181-remote-sync-to-s3-storage)
+    - [1.8.2. Recreate PBS LXC container](#182-recreate-pbs-lxc-container)
 
 This repository contains scripts and configurations to set up a home server based on [Proxmox VE](https://www.proxmox.com/en/)
 and [Proxmox Backup Server](https://www.proxmox.com/en/products/proxmox-backup-server/overview).
@@ -42,9 +48,9 @@ This also applies to software issues within your running services (e.g., an upda
 
 The home server provides the following services:
 
-- Cloud storage for files using [Nextcloud](https://nextcloud.com/).
-- A photo gallery using [Memories](https://apps.nextcloud.com/apps/memories).
-- A password manager using [Passbolt](https://www.passbolt.com/).
+- Cloud storage for files [Nextcloud](https://nextcloud.com/).
+- A photo gallery [Memories](https://apps.nextcloud.com/apps/memories).
+- A password manager [Passbolt](https://www.passbolt.com/).
 - [Pi-hole](https://pi-hole.net/) with [Unbound](https://nlnetlabs.nl/projects/unbound/about/)
   running locally as a recursive DNS solver, to block ads and protect your DNS queries.
 - [HomeAssistant](https://www.home-assistant.io/) to manage all your home automations from a single interface.
@@ -55,31 +61,38 @@ Backups are performed automatically every night and uploaded (encrypted) to an e
 
 ## 1.1. My Hardware
 
-| Component | Description | Price |
-| :--- | :--- | :--- |
-| CASE | Fractal Design Define 7 Compact | 140€ |
-| MB | Gigabyte B550M DS3H AC R2 rev. 1.0 | 91€ |
-| RAM | 128GB (4x Silicon Power SP032GBLFU320X02 32GB DDR4 3200 1.2V) | 286€ |
-| CPU | AMD Ryzen 7 5700G 8C/16T 3.8/4.6 GHz | 134€ |
-| NVME | 2x Kingston 2TB SNV3S/2000G (Main storage for VMs/Containers - RAID1) | 202€ |
-| SSD | 2x LNS100-256RB (OS and applications - RAID1) | 42€ |
-| HDD | 2x Western Digital 3 TB WD30PURZ-85GR (Storage for backups - RAID1) | 240€ |
-| PSU | Cooler Master G650M | 120€ |
-| UPS | CyberPower CP900EPFCLCD | 210€ |
-| Fans/Misc | Noctua fans, cables, etc... | 110€ |
-| Smart Plug | Shelly Plug S Gen3 | 25€ |
-| **Total** | | **1600€** |
+| Component | Description |
+| :--- | :--- |
+| CASE | Fractal Design Define 7 Compact |
+| MB | Gigabyte B550M DS3H AC R2 rev. 1.0 |
+| RAM | 128GB (4x Silicon Power SP032GBLFU320X02 32GB DDR4 3200 1.2V) |
+| CPU | AMD Ryzen 7 5700G 8C/16T 3.8/4.6 GHz |
+| NVME | 2x Kingston 2TB SNV3S/2000G (Main storage for VMs/Containers - RAID1) |
+| SSD | 2x LNS100-256RB (Hypervisor OS - RAID1) |
+| HDD | 2x Western Digital 3 TB WD30PURZ-85GR (Storage for backups - RAID1) |
+| PSU | Cooler Master G650M |
+| UPS | CyberPower CP900EPFCLCD |
+| Smart Plug | Shelly Plug S Gen3 (emergency power cycle) |
 
-## 1.2. Monthly Costs
+### 1.1.1. Some considerations on the HW
 
-I expect the hardware to last 10 years, as that was my experience with a previous server (Xeon E3-1240 v3) bought in 2013 and replaced in 2025. This makes the amortized hardware cost ~13€/month. The server consumes 45W in idle and runs 24/7, making the electricity cost roughly 10€/month (assuming a rate of 0.30€/kWh). I also use AWS S3 for offsite backups, which costs 3€/month, and a domain name for 1€/month.
+I expect the hardware to have a lifespan of 10 years, as that was my experience with a previous server (Xeon E3-1240 v3) bought in 2013 and replaced in 2025. All the components listed above consume approximately 45W at idle (measured with the smart plug).
 
-So, the **total monthly cost is ~27€/month**.
+Besides hardware and electricity costs, you should also consider additional recurring costs for offsite backups and a domain name. For example, I pay ~3€/month for AWS S3 storage and ~1€/month to Cloudflare for the domain.
+
 Considering that 2TB of Google Drive storage costs 10€/month, building a home server is not strictly worth it from a purely economical point of view. It makes sense mainly if you plan to build a similar machine for other purposes—as I do—such as experimenting with new technologies and services, or creating VMs for development. It is also worthwhile if you value your privacy, want to keep your data under your own control, and wish to avoid vendor lock-in.
 
-Of course, you can reduce these costs by using cheaper components, omitting a UPS, choosing a more power-efficient CPU, or not using an external cloud for backups. However, the hardware and software setup I have documented here is likely the bare minimum required to achieve a decent degree of redundancy and reliability. This ensures you won't regret skipping the convenience of cloud services when the first disk fails or a software update breaks your configuration.
+You can of course save some money by using less RAM, less storage etc...
+What I would consider the bare minimum to protect your data and have a usable server are:
 
-## 1.3. Router Setup
+- 2x SSD/NVMe in RAID1 for OS, VMs and Containers
+- 2x HDDs in RAID1 for backups
+- 1x UPS to protect against power outages and power surges
+- 1x Smart Plug to power cycle the server if it hangs
+- 1x offsite backup to a cloud service for disaster recovery
+- 1x domain name to easily access services from the internet
+
+## 1.2. Router Setup
 
 My ISP provides a modem/router combo that I cannot replace because it integrates an Optical Network Terminal (ONT) for my FTTH connection—a feature not easily found in consumer routers. It supports a 5Gbps connection divided across multiple interfaces: one 2.5Gbps port, two 1Gbps ports, and an internal WiFi 6 access point. I have connected one of the 1Gbps ports to my server, and the remaining ports serve my home network.
 
@@ -97,11 +110,11 @@ This guide covers the setup of a Cloudflare Tunnel. I chose this option because 
 
 Regarding the local network configuration, I would suggest using static IP addresses for all devices you want to regularly access, while keeping DHCP for smartphones and other devices that you do not need to log into remotely. I do not need multiple subnets; I just use one network with a /24 netmask. What I normally do is set the DHCP server to assign IP addresses in the range of 150–250. You may think that reserving almost 150 static IP addresses is a lot, but it is not, considering that you may have many CTs and VMs running on your server, each with its own local IP address, and you may also have many devices for your home automations (e.g., cameras, lights, blind actuators, sensors, etc.).
 
-## 1.4. Server Setup
+## 1.3. Server Setup
 
 The setup I describe here is based on my hardware configuration. It assumes you have a similar hardware setup—three sets of disks for OS, main storage, and backups—and a domain name to access your services from the internet.
 
-### 1.4.1. Proxmox Installation
+### 1.3.1. Proxmox Installation
 
 During the initial installation of Proxmox VE, remember to:
 
@@ -128,7 +141,7 @@ When prompted, set the following options:
 - Disable high availability (no-replicas)
 - Disable Corosync (no-replicas)
 
-### 1.4.2. Smart Plug and Wake on LAN
+### 1.3.2. Smart Plug and Wake on LAN
 
 In the BIOS/UEFI, the server is set to power on automatically whenever power is restored after an outage. I also have a smart plug that can be controlled via Home Assistant or directly through its web interface, allowing me to remotely power cycle the server if needed. The smart plug is connected to the UPS, so it will not drop power during a utility outage. This setup is a preventive measure: if the server ever becomes unreachable on the network, I can forcefully power cycle it via the smart plug to bring it back online.
 
@@ -154,7 +167,7 @@ iface nic0 inet manual
         pre-down ethtool -s nic0 wol g
 ```
 
-### 1.4.3. Data and Backup Pools Setup
+### 1.3.3. Data and Backup Pools Setup
 
 First, check which drives you want to include in the data pool:
 
@@ -239,7 +252,7 @@ Save and close the editor, then verify that the cron table was successfully upda
 crontab -l
 ```
 
-### 1.4.4. Dataset Encryption
+### 1.3.4. Dataset Encryption
 
 I want all my data to be encrypted at rest. To achieve this, I created an encrypted dataset inside both the `tank` pool and the `archive` pool. This ensures that whenever the server is powered off, the data remains encrypted and inaccessible without the passphrase. The trade-off is that I must manually type the passphrase every time I reboot the server before the VMs and containers can start. This is acceptable for my use case since the server is physically in my home, and I can always reach it remotely via VPN.
 
@@ -290,7 +303,7 @@ These mount commands pass the `-l` (load key) and `-u` (unload key) flags, respe
 
 Finally, log in to the Proxmox GUI, navigate to `Datacenter -> Storage`, and add two new ZFS storage units. Give them IDs like `tank-encrypted` (pointing to the `tank/encrypted` dataset) and `archive-encrypted` (pointing to the `archive/encrypted` dataset). Make sure to enable the `Thin provision` option for both.
 
-### 1.4.5. RAID Array Recovery
+### 1.3.5. RAID Array Recovery
 
 It may happen that one of the disks in a RAID array fails. In that case, the pool will enter a `DEGRADED` state.
 
@@ -343,7 +356,7 @@ After the disks are completely synced, you can optionally force a manual coheren
 zpool scrub <pool_name>
 ```
 
-#### 1.4.5.1. OS Disk Recovery
+#### 1.3.5.1. OS Disk Recovery
 
 If the failed disk was part of the OS pool (`rpool`), the recovery procedure is identical to the one above, but additional steps are required to ensure the system remains bootable from the replacement disk.
 
@@ -369,7 +382,7 @@ If only one entry is listed, you need to update the boot loader entries. The fol
 dpkg-reconfigure grub-efi-amd64
 ```
 
-### 1.4.6. Enable Mail Alerts
+### 1.3.6. Enable Mail Alerts
 
 The server needs to be able to send alert emails whenever an error occurs. To facilitate this, a send-only SMTP relay must be configured.
 
@@ -413,7 +426,7 @@ Click to add a new `SMTP Target` and configure it with the following settings:
 
 Finally, edit the default Notification Matcher under `Datacenter -> Notifications -> Matchers` to route all mail output to your newly created target. You can also safely set the default `mail-to-root` target to disabled.
 
-### 1.4.7. Mail notifications for ZFS pools
+### 1.3.7. Mail notifications for ZFS pools
 
 The ZFS Event Daemon (`zed`) service can automatically monitor your data pools.
 
@@ -441,7 +454,7 @@ ZED_SYSLOG_TAG="zed"
 ZED_SYSLOG_SUBCLASS_EXCLUDE="history_event"
 ```
 
-#### 1.4.7.1. Fix for ZED bug
+#### 1.3.7.1. Fix for ZED bug
 
 Unfortunately, a known bug prevents ZED from sending a notification if a drive completely fails while the server is powered off. In this edge case, when the server starts back up, the pool status will correctly display `DEGRADED`, but ZED will fail to trigger any email notifications alerting you of the failure.
 
@@ -477,7 +490,7 @@ Check that the new cron schedule is active:
 crontab -l
 ```
 
-### 1.4.8. UPS Configuration
+### 1.3.8. UPS Configuration
 
 This specific configuration is tailored for the CyberPower CP1500PFCLCD UPS model. However, the overall procedure will be very similar for other UPS models or brands supported by Network UPS Tools (NUT).
 
@@ -589,7 +602,7 @@ systemctl enable nut.target
 systemctl enable nut-driver.target
 ```
 
-#### 1.4.8.1. UPS mail notifications
+#### 1.3.8.1. UPS mail notifications
 
 NUT needs to be configured to execute a shell script that sends an email whenever a power event occurs. Edit `/etc/nut/upsmon.conf` and append these lines:
 
@@ -634,7 +647,7 @@ systemctl restart nut-driver.service
 systemctl restart nut-monitor.service
 ```
 
-## 1.5. Proxmox Containers and VMs
+## 1.4. Proxmox Containers and VMs
 
 The server hosts the following containers and VMs. Each ID reflects the last octet of the container's or VM's IP address:
 
@@ -646,6 +659,7 @@ The server hosts the following containers and VMs. Each ID reflects the last oct
   - Traefik
   - Nextcloud
   - Passbolt
+  - Wetty
 - **109 (pbs01):** An instance of Proxmox Backup Server used to perform backups of all other containers and VMs.
 
 **VMs:**
@@ -656,12 +670,13 @@ Cloudflared and Traefik provide secure remote access to all services. They could
 
 The following sections describe the configuration and setup process for each container and VM.
 
-## 1.6. Pi-hole Container Setup
+> Note that in my `docker-compose` files, sensitive information (like tokens) is stored in a separate location (e.g. `/root/vault/`) from this repository. This is a security measure to prevent accidental exposure or scraping. You can, of course, place everything in a single `.env` file if you prefer.
+
+## 1.5. Pi-hole Container Setup
 
 `Pi-hole` is a DNS sinkhole that can be used to block ads and other unwanted content. It can be used together with `Unbound` to create a private DNS server.
 
-`Pi-hole` is installed in a dedicated LXC container using the available
-Proxmox helper scripts:
+`Pi-hole` is installed in a dedicated LXC container using the available Proxmox helper scripts:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/pihole.sh)"
@@ -676,9 +691,7 @@ During the setup phase, I specified the following settings for the container:
 - Cores:  2
 - Unbound: configured as recursive DNS server
 
-I wanted all traffic from Unbound to the top-level DNS servers to be encrypted as well,
-so I added the following lines to the Unbound configuration
-at the end of `/etc/unbound/unbound.conf.d/pi-hole.conf`:
+To ensure all traffic from Unbound to the top-level DNS servers is also encrypted, I added the following lines to the Unbound configuration at the end of `/etc/unbound/unbound.conf.d/pi-hole.conf`:
 
 ```ini
 # TLS upstream config
@@ -698,9 +711,9 @@ forward-zone:
 After changing the configuration, remember to restart `Pi-hole` to apply
 the new settings.
 
-## 1.7. NAS Container Setup
+## 1.6. NAS Container Setup
 
-The `nas` container was originally created to host an instance of Nextcloud, but it now hosts multiple services—I should probably find a better name for it.
+The `nas` container was originally created to host Nextcloud, but it now hosts multiple services (and thus outgrew its name).
 
 The container is based on Debian 13 with the following settings:
 
@@ -745,9 +758,9 @@ docker compose down
 
 Additional details for each service are provided in the following sections.
 
-### 1.7.1. GPU Passthrough
+### 1.6.1. GPU Passthrough
 
-My CPU has an integrated graphics card that can accelerate some video encoding/decoding tasks. I pass through the GPU to the `nas` container to allow Docker to use it.
+My CPU features an integrated GPU that supports hardware acceleration for video encoding and decoding. I pass this GPU through to the `nas` container to make it available to Docker.
 
 First, identify the GPU device on the host system:
 
@@ -800,20 +813,17 @@ For example:
 - `/dev/dri/renderD129 gid=992`
 - `/dev/dri/card1 gid=44`
 
-### 1.7.2. Cloudflared
+### 1.6.2. Cloudflared
 
 A Cloudflare Tunnel avoids exposing the NAS directly to the internet using a public IP address.
 Instead, a tunnel is created between the NAS and the Cloudflare servers.
 
-I had to enable this service because my ISP was randomly dropping
-the public IPv6 address assigned to the NAS, requiring me to restart
-the router to restore public access.
+I opted for this service because my ISP frequently dropped the public IPv6 address assigned to the NAS, which required manual router restarts to restore public access.
 
 To enable a Cloudflare Tunnel, the `cloudflared` service must run on the NAS.
 It can be executed inside a Docker container.
 
-If you want to use a Cloudflare Tunnel, you need to first create an account
-on Cloudflare and use it to manage your DNS records.
+To use a Cloudflare Tunnel, you must first create a Cloudflare account and use it to manage your DNS records.
 
 To enable a Cloudflare Tunnel, first delete all existing A, AAAA, and CNAME
 entries in your DNS records, then go to the `Zero Trust` section in your Cloudflare
@@ -829,10 +839,10 @@ You also need to specify the endpoint of the tunnel. If you plan to route reques
 
 Ensure that the `cloudflared` service is started in a container on the NAS. For the complete compose configuration, refer to the `cloudflared` directory in this repository.
 
-You will need to manually create a `.env` file in that same directory containing your tunnel token:
+You will need to manually create an env file `/root/vault/cloudflared.env`containing your tunnel token:
 
 ```env
-CLOUDFLARED_TUNNEL_TOKEN=your_token_here
+TUNNEL_TOKEN=your_token_here
 ```
 
 To properly route traffic, the `cloudflared` container must be linked to the `traefik` network. In the `docker-compose.yml` file, the `traefik` network is declared as `external`. This means `docker compose` expects the network to already exist on the host rather than creating it automatically.
@@ -846,13 +856,13 @@ docker network create traefik
 The `cloudflared` service will establish a tunnel to Cloudflare, and all traffic will be conveyed through it.
 No ports need to be exposed to the internet.
 
-#### 1.7.2.1. DNS Challenge
+#### 1.6.2.1. DNS Challenge
 
 Cloudflare Tunnels do not work with Traefik's HTTP or TLS challenge for HTTPS certificate validation and renewal, so a DNS challenge is needed instead.
 
 You need to create an API token in Cloudflare using the `Edit zone DNS` template. Save the token, as it will be required later for the Traefik configuration.
 
-### 1.7.3. Traefik
+### 1.6.3. Traefik
 
 Traefik is a reverse proxy that can be used to route traffic to different services based on the domain name.
 
@@ -866,9 +876,10 @@ docker network create passbolt
 docker network create passbolt_db
 docker network create nextcloud-aio 
 docker network create nextcloud-frontend
+docker network create wetty
 ```
 
-You also need to create a `.env` file in the `traefik` directory containing the following secrets:
+You need to create a `.env` file in the `traefik` directory containing the following secrets:
 
 ```env
 TRAEFIK_WEBPORT=<web port for traefik dashboard default should be 8080>
@@ -881,9 +892,16 @@ NEXTCLOUD_URL=<this is the url to the local nextcloud frontend container e.g. ht
 HOMEASSISTANT_URL=<this is the url to the homeassistant VM e.g. http://<your_local_subnet>.15:8123/>
 ```
 
+You also need an additional env file `/root/vault/traefik.env` containing the following secrets:
+
+```env
+CF_API_EMAIL=<mail you used in cloudflare registration, is needed for authentication together with the token>
+CF_DNS_API_TOKEN=<token for dns challenges you should setup this in cloudflare and copy it there>
+```
+
 Note that `NEXTCLOUD_URL` and `HOMEASSISTANT_URL` use HTTP, not HTTPS, as TLS termination is handled by Traefik. You could also avoid handling certificates in Traefik entirely, since the Cloudflare Tunnel is already encrypted. In that case, you would use the `HTTP` protocol in the tunnel configuration instead of `HTTPS` and remove the TLS configuration from Traefik. However, I have not tried this option, since having Traefik handle TLS termination provides an extra layer of security.
 
-### 1.7.4. Passbolt
+### 1.6.4. Passbolt
 
 Passbolt is a web-based password manager that can be self-hosted. It also has a polished mobile app.
 
@@ -909,10 +927,226 @@ KEY_NAME=<key name for passbolt e.g. vault>
 KEY_EMAIL=${KEY_NAME}@${DOMAIN}
 ```
 
-### 1.7.5. Nextcloud
+You also need an additional env file `/root/vault/passbolt.env` containing the following secrets:
+
+```env
+EMAIL_TRANSPORT_DEFAULT_USERNAME=<your mail relay username>
+EMAIL_TRANSPORT_DEFAULT_PASSWORD=<your mail relay password>
+```
+
+### 1.6.5. Nextcloud
 
 Nextcloud is an open-source cloud storage solution, similar to the Google suite (Drive, Photos, Calendar, Contacts, etc.).
 You can deploy Nextcloud in many ways; I chose to use the `nextcloud-aio` Docker image, which is currently the simplest and recommended method.
 Since the [nextcloud-aio](https://github.com/nextcloud/all-in-one) repository contains all the information you need to deploy it, I will not repeat it here.
 
 All the configuration I use is stored in the `nextcloud` directory in this repository.
+
+#### 1.6.5.1. Nextcloud stop script
+
+Nextcloud is composed of multiple containers, so it is important to stop them before shutting down the `nas` LXC container to avoid data corruption.
+You can use a `systemd` service to stop nextcloud containers before shutdown and restart them at startup. Place the following script under `/etc/systemd/system/nextcloud-manager.service`:
+
+```ini
+[Unit]
+Description=Stop nextcloud containers before shutdown and restart them at startup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c "docker exec --env START_CONTAINERS=1 nextcloud-aio-mastercontainer /daily-backup.sh"
+ExecStop=/bin/bash -c "docker exec --env STOP_CONTAINERS=1 nextcloud-aio-mastercontainer /daily-backup.sh"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then install the service:
+
+```bash
+systemctl enable nextcloud-manager.service
+```
+
+To check if the service is working properly try to reboot and then inspect the service logs:
+
+```bash
+journalctl -u nextcloud-manager.service
+```
+
+### 1.6.6. Wetty
+
+Wetty is a web-based terminal that can be used to access the server's terminal from a web browser.
+I primarily use it to access a Raspberry Pi 3, but you can configure it to access any machine on your network.
+
+All the configuration I use is stored in the `wetty` directory in this repository.
+
+You need to create a `.env` file in that directory containing the following secrets:
+
+```env
+DOMAIN=<domain you want to use for wetty e.g. wetty.yourdomain.com>
+SSH_HOST=<local ip address of the machine you want to access>
+```
+
+## 1.7. Home Assistant VM
+
+I use Home Assistant OS in a dedicated VM to manage my smart home devices. It is configured with the following settings:
+
+VM ID: 115
+Memory: 16G
+CPU: 4
+Disk: 32GB
+IP: <your_local_subnet>.15
+
+While the `traefik` container is already configured to forward external requests to this VM, you must also allow remote access within your Home Assistant configuration. Add the following lines to your `configuration.yaml` file:
+
+```yaml
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - <your_local_subnet>.15
+```
+
+Note: Using a dedicated VM is recommended for Home Assistant OS. While running it in an LXC container is possible, it restricts certain features.
+
+## 1.8. Backups
+
+I use Proxmox Backup Server (PBS) to back up my Proxmox VE (PVE) environment.
+Since I do not have a second PVE server, I installed PBS in an LXC container.
+This means that if the PVE server fails, the LXC container will fail with it
+and must be recreated. However, the backup data remains safe, as it is
+stored on a RAID array and cloned nightly to remote S3 storage.
+
+PBS supports client-side encryption, meaning backups are stored securely (both locally and on S3).
+To restore these backups, you must have the client encryption key.
+It is critical to store this key in a secure, separate location so you can access
+your S3 backups if your PVE server completely fails.
+
+PBS allows you to restore either an entire VM/CT or just specific files.
+
+To install Promox Backup Server (PBS) in a LXC container, you can use the following script:
+
+```shell
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/proxmox-backup-server.sh)"
+```
+
+I used the following settings:
+
+- Type:                 Unprivileged
+- CT ID:                109
+- Hostname:             pbs01
+- DiskSize:             32G
+- CPU:                  2
+- RAM:                  8192
+- IP static:            <your_local_subnet>.9/24
+- Root SSH access:      no (you have the web interface to access it)
+
+Then you can run PBS post install (in PBS terminal this time) to complete the setup
+
+```shell
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pbs-install.sh)"
+```
+
+From the PVE interface, navigate to the LXC PBS container and select `Resource -> Add -> Mount Point`.
+Add a disk to host backups and mount it to the `/mnt/backup` directory. Remember to uncheck the `Backup` option for this mount point.
+
+From PBS interface add a new local datastore with Backing Path `/mnt/backup` and name `backup-local`
+In the prune options select: keep daily 1, keep weekly 1, keep monthly 1
+
+From the created datastore options select `Verify new Snapshot`
+
+Add prune and GC jobs to be executed daily before the backup job (e.g. at midnight)
+
+Go to access controll and create a new user `backup-agent`
+Go to permissions tab and assign to the `backup-agent` user permission to path `/datastore` with role `DatastoreAdmin`
+
+Go to PVE interface and select `Datacenter -> Storage -> Add -> Proxmox Backup Server`
+
+Fill the settings as follows:
+
+- ID:           pbs-backup
+- Server:       <your_local_subnet>.9
+- Username:     backup-agent@pbs
+- Datastore:    backup-local
+- Fingerprint:  `pbs -> certificates -> view certificate`
+- Encryption:   `auto generate a client encryption key`
+
+> [!NOTE]
+> It is mandatory to store the client encryption key in a safe place,
+> otherwise you will not be able to restore your backups in case you need to recreate the PBS LXC container.
+
+Go to PVE `Datacenter -> backup` and add desired backups, my configuration is the following:
+
+- VMs/CTs to backup: 110, 115 and 120 (nas, home-assistant, pi-hole)
+- Schedule: daily at 1am
+- Mode: stop (stop the VMs/CTs to minimize data corruption risk)
+- Other options to default
+
+You can configure the backup server to send mail notifications. The procedure is identical to the PVE mail configuration.
+
+Once backups are configured, you can test the restore procedure. From the PVE interface, navigate to the `pbs-backup` storage, where you can restore entire VMs/CTs or single files.
+
+### 1.8.1. Remote Sync to S3 storage
+
+I use this feature to sync my backups to Amazon S3. This ensures an offsite copy is available in case the local PVE server (and its disks) fails completely.
+
+The backups are uploaded to Amazon S3 in an encrypted format. PBS uses the AES-256-GCM cipher, which is highly secure, ensuring your data remains safe even in the event of a cloud provider data breach.
+
+PBS backups are incremental: only the initial backup uploads all your data to S3.
+Subsequent backups upload only the changes, which is highly efficient for both speed and cost.
+Furthermore, data is compressed and deduplicated, so the total amount of data uploaded to S3 remains much smaller than the actual size of your local VMs and CTs, even with multiple snapshots.
+
+First, create an Amazon S3 bucket for your backups. Note that PBS has naming restrictions: dashes (`-`) are allowed, but dots (`.`) are not.
+
+I named my Amazon S3 bucket something like `my-domain-backup`. You can leave all the other settings as default for generic usage.
+You must also navigate to the `IAM` section and create a user with access to this bucket.
+Generate an `AWS CLI` access key for this user, as it will be required by PBS later.
+
+You need to add some cache to the backup server, this is needed to optimize the number of API calls to S3.
+go to `Resource -> add -> mount point` and add a new disk for the cache, I have set the size to 128G
+and the mount point to `/mnt/cache_s3`. Remember to uncheck the `Backup` option for this mount point.
+
+Then in your PBS console go to `Configuration -> S3 Endpoints` and add a new endpoint with the following settings:
+
+- Endpoint: `s3.{{region}}.amazonaws.com`
+- Region: <your_s3_region> (e.g. eu-central-1)
+- Port: 443
+- Access Key: <your_access_key>
+- Path Style: checked
+
+Then go to `Datastore -> Add Datastore` and add a new datastore with the following settings:
+
+- Datastore Type: s3
+- Local Cache: /mnt/cache_s3
+- S3 Endpoint: <your_s3_endpoint>
+- Bucket: <your_bucket_name> (the bucket list should be automatically populated from the endpoint)
+
+From the created datastore options select `Verify new Snapshot`
+
+Add prune and GC jobs to be executed daily before the backup job (e.g. at midnight)
+
+Create a `Pull` Sync job to sync the local datastore to S3, I set it with the following settings:
+
+- Local Owner: root@pam
+- Sync Schedule: daily at 5am
+- Sorce Datastore: backup-local
+- Comment: Copy backups in s3
+- Remove Vanished: checked
+- Encrypted Only: checked
+- Verified Only: checked
+
+### 1.8.2. Recreate PBS LXC container
+
+- Recreate the PBS LXC container using the Proxmox Backup Server script as above
+- You should have locally the volume you used for the datastore, you can attach it to the new LXC container,
+  if you do not have it anymore you can pull it from S3.
+  You need to mount this volume to the new LXC container at `/mnt/backup`
+- In PBS go to `Datastore -> Add Datastore` and recreate the datastore from the `/mnt/backup` directory
+  > [!NOTE]
+  > It is mandatory to click on `Advanced` and select `Reuse existing datastore`
+  > otherwise you will create a new datastore and you will not be able to restore your backups.
+- Recreate the `backup-agent` user as described above
+- Recreate the `pbs-backup` storage in PVE as described above
+  > [!NOTE]
+  > Here you shall not create a new encryption key, you shall use the old one you saved previously.
