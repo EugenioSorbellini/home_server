@@ -104,7 +104,7 @@ Because I do not want to expose an SSH service directly to the internet, I use a
 
 My ISP router has another limitation: it assigns a shared IPv4 address with a restricted number of available ports. For instance, I cannot use ports 80 and 443 to expose web services to the internet. While I do have a pool of IPv6 addresses that could potentially be used to expose services entirely over IPv6, the router unfortunately drops IPv6 connectivity on occasion and requires a reboot to restore it.
 
-I discovered that I can use free services like Cloudflare Tunnels (`cloudflared`) or Tailscale to expose my web services securely without having to deal with IP addresses or port forwarding. This is a practical solution, particularly if you cannot request a static IP address from your ISP.
+I rely on a free service, Cloudflare Tunnels (`cloudflared`), to expose my web services securely without having to deal with IP addresses or port forwarding. This is a practical solution, particularly if you cannot request a static IP address from your ISP. Another option is Tailscale, but I never tried it since I have my domain name on Cloudflare.
 
 This guide covers the setup of a Cloudflare Tunnel. I chose this option because Cloudflare is already the registrar for my domain name, and I use it to manage my DNS records.
 
