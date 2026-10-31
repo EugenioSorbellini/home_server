@@ -32,7 +32,7 @@ services:
       initdb:
         condition: service_completed_successfully
     env_file:
-      - /root/vault/guacamole.env
+      - /root/vault/guacamole_db.env
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -56,6 +56,8 @@ services:
     depends_on:
       - db
       - guacd
+    # Do not pass any POSTGRES_* variable to this container: the 1.6.0 entrypoint migrates the legacy
+    # POSTGRES_ prefix to POSTGRESQL_ and, due to a bug, ends up overwriting POSTGRESQL_PASSWORD with an empty value
     env_file:
       - /root/vault/guacamole.env
     environment:

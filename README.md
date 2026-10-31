@@ -1017,12 +1017,21 @@ POSTGRES_DB=<database name you want to use for guacamole>
 POSTGRES_USER=<db user you want to use for guacamole>
 ```
 
-You also need an additional env file `/root/vault/guacamole.env` containing the following secrets (both variables must hold the same password, the first is read by PostgreSQL and the second by Guacamole):
+You also need two additional env files containing the database password, one for each container (both must hold the same password):
 
-```env
-POSTGRES_PASSWORD=<db password you want to use for guacamole>
-POSTGRESQL_PASSWORD=<same db password as above>
-```
+- `/root/vault/guacamole_db.env` read by PostgreSQL:
+
+  ```env
+  POSTGRES_PASSWORD=<db password you want to use for guacamole>
+  ```
+
+- `/root/vault/guacamole.env` read by Guacamole:
+
+  ```env
+  POSTGRESQL_PASSWORD=<same db password as above>
+  ```
+
+The two files must stay separate: the Guacamole container must not receive any `POSTGRES_*` variable. The 1.6.0 image treats the `POSTGRES_` prefix as a legacy alias of `POSTGRESQL_` and, due to a bug in its migration script (`010-migrate-legacy-variables.sh`), ends up overwriting `POSTGRESQL_PASSWORD` with an empty value, causing the error `The server requested SCRAM-based authentication, but the password is an empty string`.
 
 The Guacamole images are pinned to an exact version (currently `1.6.0`) in the `docker-compose.yml` file instead of using `latest`, for the following reasons:
 
