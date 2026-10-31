@@ -32,3 +32,11 @@ http:
       tls:
         options: tls_home_assistant
         certResolver: "letsencrypt"
+    Guacamole:
+      entryPoints:
+        - https
+      rule: "Host(`{{ env "GUACAMOLE_DOMAIN" }}`)"
+      service: guacamole
+      tls:
+        options: tls_guacamole
+        certResolver: "letsencrypt"

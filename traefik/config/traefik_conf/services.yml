@@ -23,3 +23,7 @@ http:
       loadBalancer:
         servers:
           - url: "{{ env "HOMEASSISTANT_URL" }}"
+    guacamole:
+      loadBalancer:
+        servers:
+          - url: "{{ env "GUACAMOLE_URL" }}"

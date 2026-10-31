@@ -27,6 +27,7 @@
     - [1.6.5. Nextcloud](#165-nextcloud)
       - [1.6.5.1. Nextcloud stop script](#1651-nextcloud-stop-script)
     - [1.6.6. Wetty](#166-wetty)
+    - [1.6.7. Guacamole](#167-guacamole)
   - [1.7. Home Assistant VM](#17-home-assistant-vm)
   - [1.8. Backups](#18-backups)
     - [1.8.1. Remote Sync to S3 storage](#181-remote-sync-to-s3-storage)
@@ -54,6 +55,7 @@ The home server provides the following services:
 - [Pi-hole](https://pi-hole.net/) with [Unbound](https://nlnetlabs.nl/projects/unbound/about/)
   running locally as a recursive DNS solver, to block ads and protect your DNS queries.
 - [HomeAssistant](https://www.home-assistant.io/) to manage all your home automations from a single interface.
+- [Apache Guacamole](https://guacamole.apache.org/) to RDP into the computers on the local network from a web browser.
 
 All these services have both desktop and mobile clients available.
 
@@ -741,6 +743,8 @@ The `nas` container runs several services using `docker-compose`:
 - Traefik - to route traffic to the correct service depending on the CNAME (e.g. vault.domain.com -> Passbolt)
 - Nextcloud - file and media sharing
 - Passbolt - password manager
+- Wetty - web terminal
+- Guacamole - remote desktop gateway (RDP) for local network computers
 
 Consistent with the structure of this repository, services are organized into separate directories. Each directory contains at least a `docker-compose.yml` file and a `.env` file (the `.env` files are excluded from version control as they contain sensitive secrets).
 
@@ -877,6 +881,8 @@ docker network create passbolt_db
 docker network create nextcloud-aio 
 docker network create nextcloud-frontend
 docker network create wetty
+docker network create guacamole
+docker network create guacamole_db
 ```
 
 You need to create a `.env` file in the `traefik` directory containing the following secrets:
@@ -890,6 +896,8 @@ NEXTCLOUD_DOMAIN=<domain you want to use for nextcloud e.g. nextcloud.yourdomain
 HOMEASSISTANT_DOMAIN=<domain you want to use for your HomeAssistant instance e.g. homeassistant.yourdomain.com>
 NEXTCLOUD_URL=<this is the url to the local nextcloud frontend container e.g. http://nextcloud-aio-apache:11000>
 HOMEASSISTANT_URL=<this is the url to the homeassistant VM e.g. http://<your_local_subnet>.15:8123/>
+GUACAMOLE_DOMAIN=<domain you want to use for guacamole e.g. guacamole.yourdomain.com>
+GUACAMOLE_URL=<this is the url to the local guacamole container e.g. http://guacamole:8080>
 ```
 
 You also need an additional env file `/root/vault/traefik.env` containing the following secrets:
@@ -899,7 +907,7 @@ CF_API_EMAIL=<mail you used in cloudflare registration, is needed for authentica
 CF_DNS_API_TOKEN=<token for dns challenges you should setup this in cloudflare and copy it there>
 ```
 
-Note that `NEXTCLOUD_URL` and `HOMEASSISTANT_URL` use HTTP, not HTTPS, as TLS termination is handled by Traefik. You could also avoid handling certificates in Traefik entirely, since the Cloudflare Tunnel is already encrypted. In that case, you would use the `HTTP` protocol in the tunnel configuration instead of `HTTPS` and remove the TLS configuration from Traefik. However, I have not tried this option, since having Traefik handle TLS termination provides an extra layer of security.
+Note that `NEXTCLOUD_URL`, `HOMEASSISTANT_URL` and `GUACAMOLE_URL` use HTTP, not HTTPS, as TLS termination is handled by Traefik. You could also avoid handling certificates in Traefik entirely, since the Cloudflare Tunnel is already encrypted. In that case, you would use the `HTTP` protocol in the tunnel configuration instead of `HTTPS` and remove the TLS configuration from Traefik. However, I have not tried this option, since having Traefik handle TLS termination provides an extra layer of security.
 
 ### 1.6.4. Passbolt
 
@@ -988,6 +996,48 @@ You need to create a `.env` file in that directory containing the following secr
 DOMAIN=<domain you want to use for wetty e.g. wetty.yourdomain.com>
 SSH_HOST=<local ip address of the machine you want to access>
 ```
+
+### 1.6.7. Guacamole
+
+[Apache Guacamole](https://guacamole.apache.org/) is a clientless remote desktop gateway. I use it to RDP into the computers on my local network from a web browser, without installing any client or exposing RDP ports to the internet.
+
+All the configuration I use is stored in the `guacamole` directory in this repository. The stack is composed of:
+
+- `guacamole` - the web application, routed by Traefik
+- `guacd` - the proxy daemon that opens the actual RDP connections towards the local network machines
+- `db` - a PostgreSQL database storing users, connections and history
+- `initdb` - a one-shot container that generates the database schema script, which PostgreSQL executes on its first start (when the database volume is empty)
+
+As for Nextcloud and Home Assistant, the Guacamole domain is resolved by the Traefik file configuration (`GUACAMOLE_DOMAIN` and `GUACAMOLE_URL` in the Traefik `.env` file, see [Traefik](#163-traefik)).
+
+You need to create a `.env` file in the `guacamole` directory containing the following settings:
+
+```env
+POSTGRES_DB=<database name you want to use for guacamole>
+POSTGRES_USER=<db user you want to use for guacamole>
+```
+
+You also need an additional env file `/root/vault/guacamole.env` containing the following secrets (both variables must hold the same password, the first is read by PostgreSQL and the second by Guacamole):
+
+```env
+POSTGRES_PASSWORD=<db password you want to use for guacamole>
+POSTGRESQL_PASSWORD=<same db password as above>
+```
+
+The Guacamole images are pinned to an exact version (currently `1.6.0`) in the `docker-compose.yml` file instead of using `latest`, for the following reasons:
+
+- The `guacamole` and `guacd` images must always run the same version; with `latest` a partial pull could leave them mismatched.
+- New releases may require a manual database schema upgrade. The `initdb` container only creates the schema on the first start, so an unattended version bump could break the web app against an outdated database.
+- Docker Hub does not publish floating major/minor tags (e.g. `1` or `1.6`), only exact versions and `latest`, which is rebuilt more often than releases are published.
+- Releases are infrequent (roughly once a year), so pinning has a low maintenance cost.
+
+To upgrade, read the release notes, apply any required schema upgrade script, update the `guacamole` and `guacd` image tags in the `docker-compose.yml` file and run `docker compose pull && docker compose up -d`.
+
+Remember to publish the Guacamole domain as a new application in the Cloudflare Tunnel connector (see [Cloudflared](#162-cloudflared)), pointing to `traefik` like the other services.
+
+On first login use the default credentials `guacadmin` / `guacadmin`, then immediately create a new administrator user and delete (or change the password of) `guacadmin`. Since the service is reachable from the internet, TOTP two-factor authentication is enabled and you will be asked to enroll an authenticator app at the first login of each user.
+
+To add a computer, go to `Settings -> Connections -> New Connection`, choose the `RDP` protocol and fill in the local IP address of the machine (port `3389`), the username and password, and set `Security mode` to `Any` and check `Ignore server certificate` if the machine uses a self-signed certificate (the Windows default). Remote Desktop must be enabled on the target machine.
 
 ## 1.7. Home Assistant VM
 

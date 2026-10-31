@@ -23,6 +23,8 @@ services:
       - HOMEASSISTANT_DOMAIN=${HOMEASSISTANT_DOMAIN}
       - NEXTCLOUD_URL=${NEXTCLOUD_URL}
       - HOMEASSISTANT_URL=${HOMEASSISTANT_URL}
+      - GUACAMOLE_DOMAIN=${GUACAMOLE_DOMAIN}
+      - GUACAMOLE_URL=${GUACAMOLE_URL}
       - TRAEFIK_CERTIFICATESRESOLVERS_STAGING_ACME_EMAIL=${ACME_EMAIL}
       - TRAEFIK_CERTIFICATESRESOLVERS_PRODUCTION_ACME_EMAIL=${ACME_EMAIL}
     ports:
@@ -47,6 +49,7 @@ services:
       - nextcloud-frontend
       - passbolt
       - wetty
+      - guacamole
 
 volumes:
   traefik-ssl-certs:
@@ -59,4 +62,6 @@ networks:
   passbolt:
     external: true
   wetty:
+    external: true
+  guacamole:
     external: true
